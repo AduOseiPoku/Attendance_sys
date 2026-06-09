@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Identity</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    </head>
+<body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full">
+        <h3 class="text-xl font-bold text-slate-800">We found an account for this phone</h3>
+        <p class="text-slate-500 text-sm mt-1">Please confirm it's you: <strong>{{ member.name }}</strong></p>
+
+        <form method="POST" action="{% url 'confirm_identity' event.id member.id %}" class="mt-4">
+            {% csrf_token %}
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition">Confirm as {{ member.name }}</button>
+        </form>
+
+        <div class="mt-4 text-sm text-slate-600">If this isn't you, please go back and try a different phone number or register a new profile.</div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Member Registration</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full">
+        <h3 class="text-xl font-bold text-slate-800">ID Not Found</h3>
+        <p class="text-slate-500 text-sm mt-1">Please enter your profile details below to complete your event registration.</p>
+        
+        <form method="POST" class="mt-4 space-y-4">
+            {% csrf_token %}
+            {% if error %}
+                <p class="text-red-600 text-sm">{{ error }}</p>
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-medium text-slate-600">Full Name</label>
+                <input type="text" name="name" value="{{ suggested_name|default:'' }}" placeholder="John Doe" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-600">Phone Number</label>
+                <input type="tel" name="phone_number" value="{{ suggested_phone|default:'' }}" placeholder="e.g., +233501234567" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-600">Emergency Phone (optional)</label>
+                <input type="tel" name="emergency_phone_number" placeholder="Emergency contact" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-600">Residential Address</label>
+                <textarea name="address" rows="3" placeholder="Enter physical or digital address" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required></textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-600">Department (optional)</label>
+                <input type="text" name="department" placeholder="e.g., Youth" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition">Complete Registration</button>
+        </form>
+    </div>
+</body>
+</html>

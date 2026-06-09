@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Profile</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-lg w-full">
+        <h3 class="text-xl font-bold text-slate-800">Multiple people have the name "{{ name }}"</h3>
+        <p class="text-slate-500 text-sm mt-1">Please select your profile by recognizing a masked phone number below.</p>
+
+        <form id="pickForm" method="POST" class="mt-4">
+            {% csrf_token %}
+            <div class="space-y-2">
+                {% for m in members_data %}
+                    <label class="flex items-center gap-3 p-2 border rounded-lg">
+                        <input type="radio" name="member_id" value="{{ m.id }}" class="radio">
+                        <div>
+                            <div class="font-medium">Profile #{{ forloop.counter }}</div>
+                            <div class="text-sm text-slate-600">Phone: {{ m.masked_phone }}</div>
+                        </div>
+                    </label>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition">Confirm Selection</button>
+        </form>
+
+        <script>
+            document.getElementById('pickForm').addEventListener('submit', function(e){
+                e.preventDefault();
+                const form = e.target;
+                const selected = form.member_id.value;
+                if(!selected){
+                    alert('Please select a profile.');
+                    return;
+                }
+                form.action = `/attendance/confirm/{{ event.id }}/${selected}/`;
+                form.method = 'POST';
+                form.submit();
+            });
+        </script>
+    </div>
+</body>
+</html>

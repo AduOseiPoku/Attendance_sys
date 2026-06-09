@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Check-In</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full text-center">
+        <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl">📲</div>
+        <h2 class="text-2xl font-bold text-slate-800">Check-In</h2>
+        <p class="text-slate-500 mt-1">Welcome to <span class="font-semibold text-slate-700">{{ event.name }}</span></p>
+        
+        <form method="POST" class="mt-6 text-left">
+            {% csrf_token %}
+            {% if error %}
+                <p class="text-red-600 text-sm mb-2">{{ error }}</p>
+            {% endif %}
+
+            <label class="block text-sm font-medium text-slate-600">Full Name</label>
+            <input type="text" name="name" placeholder="Enter your full name" value="{{ request.POST.name|default_if_none:'' }}" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required autofocus>
+
+            <label class="block text-sm font-medium text-slate-600 mt-3">Phone Number</label>
+            <input type="tel" name="phone_number" placeholder="e.g., +233501234567" value="{{ request.POST.phone_number|default_if_none:'' }}" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+            <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition">Submit Attendance</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends "admin/change_form.html" %}
+{% block after_field_sets %}
+<hr style="margin: 30px 0; border-color: #ccc;">
+<h2>Live Attendance Reports</h2>
+<div style="display: flex; gap: 40px; margin-top: 20px;">
+    
+    <div style="flex: 1; background: #f6fff6; border: 1px solid #c2ecc2; padding: 15px; border-radius: 6px;">
+        <h3 style="color: #28a745; margin-top:0;">✓ Present Members ({{ present_members|length }})</h3>
+        <ul>
+            {% for member in present_members %}
+                <li><strong>{{ member.name }}</strong> ({{ member.student_id }})</li>
+            {% empty %}
+                <li style="color: #666;">No check-ins logged yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div style="flex: 1; background: #fff5f5; border: 1px solid #fbcbcb; padding: 15px; border-radius: 6px;">
+        <h3 style="color: #dc3545; margin-top:0;">𐄂 Absent Members ({{ absent_members|length }})</h3>
+        <ul>
+            {% for member in absent_members %}
+                <li><strong>{{ member.name }}</strong> ({{ member.student_id }})</li>
+            {% empty %}
+                <li style="color: #666;">Everyone is accounted for!</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
