@@ -1,0 +1,2 @@
+# Project Python dependencies
+qrcode[pil]

@@ -28,6 +28,19 @@
             <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition">Confirm Selection</button>
         </form>
 
+        <div class="mt-4 space-y-3">
+            <div class="text-sm text-slate-600">If none of these look familiar, you can register or quickly check in:</div>
+
+            <a href="{% url 'onboard_member' event.id %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}" class="w-full block text-center bg-amber-500 hover:bg-amber-600 text-white font-medium p-3 rounded-lg transition">No — I'm a visitor / Register</a>
+
+            <form method="POST" action="{% url 'quick_checkin' event.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="name" value="{{ typed_name }}">
+                <input type="hidden" name="phone" value="{{ typed_phone }}">
+                <button type="submit" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition">Not listed — Quick Check-in</button>
+            </form>
+        </div>
+
         <script>
             document.getElementById('pickForm').addEventListener('submit', function(e){
                 e.preventDefault();

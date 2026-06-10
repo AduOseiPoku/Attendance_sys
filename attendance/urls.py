@@ -8,4 +8,5 @@ urlpatterns = [
     
     # Unified resolution endpoint handling both name and phone suggestion forms securely
     path('confirm/<int:event_id>/<int:member_id>/', views.confirm_identity, name='confirm_identity'),
+    path('quick_checkin/<int:event_id>/', views.quick_checkin, name='quick_checkin'),
 ]
