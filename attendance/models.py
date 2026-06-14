@@ -1,6 +1,7 @@
 # attendance/models.py
 
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Member(models.Model):
@@ -102,3 +103,26 @@ class AttendanceLog(models.Model):
 
     def __str__(self):
         return f"{self.member.name} - {self.event.name}"
+
+
+class ChurchOwner(models.Model):
+    """
+    A dedicated owner account for the church pastor/administrator.
+    Linked to Django's built-in User model via OneToOne so the owner
+    has their own login credentials separate from the superuser.
+    """
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="church_owner"
+    )
+
+    church_name = models.CharField(
+        max_length=200,
+        default="My Church"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Owner: {self.user.username} ({self.church_name})"

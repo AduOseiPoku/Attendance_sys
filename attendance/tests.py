@@ -261,3 +261,397 @@ class AttendanceSystemViewsTestCase(TestCase):
         post_response = self.client.post(url)
         self.assertEqual(post_response.status_code, 200)
         self.assertTrue(AttendanceLog.objects.filter(member=self.existing_member, event=self.event).exists())
+
+
+# ===========================================================================
+# Owner Dashboard Tests
+# ===========================================================================
+from django.contrib.auth.models import User
+from .models import ChurchOwner
+
+# In-memory templates for the owner dashboard screens
+OWNER_TEMPLATES = {
+    **LOC_MEM_TEMPLATES,
+    "owner/login.html":        "<html>login{% if error %} error:{{ error }}{% endif %}</html>",
+    "owner/dashboard.html":    "<html>dashboard members={{ total_members }} events={{ total_events }} checkins={{ total_checkins }} rate={{ avg_rate }}</html>",
+    "owner/members.html":      "<html>members count={{ members|length }}</html>",
+    "owner/event_detail.html": "<html>present={{ present_count }} absent={{ absent_count }} pct={{ attendance_pct }}</html>",
+}
+
+
+def make_owner(username="pastor", password="TestPass123", church_name="Test Church"):
+    """Helper: create a User + linked ChurchOwner and return both."""
+    user  = User.objects.create_user(username=username, password=password)
+    owner = ChurchOwner.objects.create(user=user, church_name=church_name)
+    return user, owner
+
+
+def make_member(name, phone, department=None):
+    """Helper: create a minimal Member."""
+    return Member.objects.create(
+        name=name,
+        phone_number=phone,
+        emergency_phone_number="000",
+        address="Test Address",
+        department=department,
+    )
+
+
+def make_event(name="Sunday Service", days_offset=0):
+    """Helper: create an Event relative to today."""
+    from datetime import date, timedelta, time as dtime
+    d = date.today() + timedelta(days=days_offset)
+    return Event.objects.create(name=name, event_date=d, event_time=dtime(9, 0))
+
+
+# ---------------------------------------------------------------------------
+# 1. ChurchOwner model
+# ---------------------------------------------------------------------------
+class ChurchOwnerModelTests(TestCase):
+
+    def test_str_representation(self):
+        user, owner = make_owner()
+        self.assertEqual(str(owner), "Owner: pastor (Test Church)")
+
+    def test_owner_linked_to_user(self):
+        user, owner = make_owner()
+        self.assertEqual(owner.user, user)
+        self.assertEqual(user.church_owner, owner)
+
+    def test_cascade_delete_user_removes_owner(self):
+        user, _ = make_owner()
+        user.delete()
+        self.assertEqual(ChurchOwner.objects.count(), 0)
+
+    def test_default_church_name(self):
+        user = User.objects.create_user(username="defaultpastor", password="Pass1234")
+        owner = ChurchOwner.objects.create(user=user)
+        self.assertEqual(owner.church_name, "My Church")
+
+    def test_one_user_cannot_have_two_church_owners(self):
+        from django.db import IntegrityError
+        user, _ = make_owner()
+        with self.assertRaises(IntegrityError):
+            ChurchOwner.objects.create(user=user, church_name="Duplicate")
+
+
+# ---------------------------------------------------------------------------
+# 2. @owner_required decorator
+# ---------------------------------------------------------------------------
+@override_settings(TEMPLATES=[{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [], "APP_DIRS": False,
+    "OPTIONS": {
+        "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
+    },
+}])
+class OwnerRequiredDecoratorTests(TestCase):
+
+    def test_unauthenticated_redirects_to_login(self):
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+
+    def test_superuser_without_church_owner_is_redirected(self):
+        """A superuser who has no ChurchOwner profile cannot access the dashboard."""
+        User.objects.create_superuser("su", "su@test.com", "SuperPass1")
+        self.client.login(username="su", password="SuperPass1")
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+
+    def test_owner_can_access_dashboard(self):
+        make_owner()
+        self.client.login(username="pastor", password="TestPass123")
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# 3. Login / Logout views
+# ---------------------------------------------------------------------------
+@override_settings(TEMPLATES=[{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [], "APP_DIRS": False,
+    "OPTIONS": {
+        "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
+    },
+}])
+class OwnerLoginLogoutTests(TestCase):
+
+    def setUp(self):
+        self.user, self.owner = make_owner()
+
+    def test_login_page_get(self):
+        response = self.client.get(reverse("owner_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "owner/login.html")
+
+    def test_already_logged_in_redirects_to_dashboard(self):
+        self.client.login(username="pastor", password="TestPass123")
+        response = self.client.get(reverse("owner_login"))
+        self.assertRedirects(response, reverse("owner_dashboard"), fetch_redirect_response=False)
+
+    def test_valid_login_redirects_to_dashboard(self):
+        response = self.client.post(reverse("owner_login"), {
+            "username": "pastor", "password": "TestPass123"
+        })
+        self.assertRedirects(response, reverse("owner_dashboard"), fetch_redirect_response=False)
+
+    def test_wrong_password_returns_error(self):
+        response = self.client.post(reverse("owner_login"), {
+            "username": "pastor", "password": "WrongPassword"
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "error")
+
+    def test_superuser_without_church_owner_cannot_login(self):
+        """A plain superuser (no ChurchOwner profile) must be rejected."""
+        User.objects.create_superuser("su2", "su2@test.com", "SuperPass2")
+        response = self.client.post(reverse("owner_login"), {
+            "username": "su2", "password": "SuperPass2"
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "error")
+
+    def test_logout_clears_session_and_redirects(self):
+        self.client.login(username="pastor", password="TestPass123")
+        response = self.client.get(reverse("owner_logout"))
+        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+        # After logout, accessing dashboard should redirect to login
+        dashboard = self.client.get(reverse("owner_dashboard"))
+        self.assertRedirects(dashboard, reverse("owner_login"), fetch_redirect_response=False)
+
+
+# ---------------------------------------------------------------------------
+# 4. Dashboard view — stat cards & chart data
+# ---------------------------------------------------------------------------
+@override_settings(TEMPLATES=[{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [], "APP_DIRS": False,
+    "OPTIONS": {
+        "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
+    },
+}])
+class OwnerDashboardViewTests(TestCase):
+
+    def setUp(self):
+        self.user, self.owner = make_owner()
+        self.client.login(username="pastor", password="TestPass123")
+
+        self.member1 = make_member("Alice", "111")
+        self.member2 = make_member("Bob",   "222")
+        self.event1  = make_event("Service A", days_offset=-7)
+        self.event2  = make_event("Service B", days_offset=0)
+
+        AttendanceLog.objects.create(member=self.member1, event=self.event1)
+        AttendanceLog.objects.create(member=self.member2, event=self.event1)
+        AttendanceLog.objects.create(member=self.member1, event=self.event2)
+
+    def test_dashboard_returns_200(self):
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_stat_cards_correct(self):
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertEqual(response.context["total_members"],  2)
+        self.assertEqual(response.context["total_events"],   2)
+        self.assertEqual(response.context["total_checkins"], 3)
+
+    def test_avg_rate_calculation(self):
+        # 3 check-ins out of 2 members × 2 events = 4 possible → 75%
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertEqual(response.context["avg_rate"], 75.0)
+
+    def test_avg_rate_zero_when_no_events(self):
+        Event.objects.all().delete()
+        AttendanceLog.objects.all().delete()
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertEqual(response.context["avg_rate"], 0)
+
+    def test_chart_labels_and_data_present(self):
+        response = self.client.get(reverse("owner_dashboard"))
+        import json
+        labels = json.loads(response.context["chart_labels"])
+        data   = json.loads(response.context["chart_data"])
+        self.assertEqual(len(labels), 2)
+        self.assertEqual(len(data),   2)
+
+    def test_chart_data_ordered_chronologically(self):
+        response = self.client.get(reverse("owner_dashboard"))
+        import json
+        data = json.loads(response.context["chart_data"])
+        # event1 (7 days ago) had 2 attendees, event2 (today) had 1
+        self.assertEqual(data[0], 2)
+        self.assertEqual(data[1], 1)
+
+    def test_recent_events_limited_to_5(self):
+        for i in range(6):
+            make_event(f"Extra Service {i}", days_offset=-i - 1)
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertLessEqual(len(list(response.context["recent_events"])), 5)
+
+
+# ---------------------------------------------------------------------------
+# 5. Members view — search & department filter
+# ---------------------------------------------------------------------------
+@override_settings(TEMPLATES=[{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [], "APP_DIRS": False,
+    "OPTIONS": {
+        "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
+    },
+}])
+class OwnerMembersViewTests(TestCase):
+
+    def setUp(self):
+        self.user, _ = make_owner()
+        self.client.login(username="pastor", password="TestPass123")
+
+        self.alice = make_member("Alice Mensah", "333", department="Choir")
+        self.bob   = make_member("Bob Asante",   "444", department="Ushers")
+        self.carol = make_member("Carol Osei",   "555", department="Choir")
+
+        event = make_event()
+        AttendanceLog.objects.create(member=self.alice, event=event)
+        AttendanceLog.objects.create(member=self.alice, event=make_event("Second", 1))
+
+    def test_members_page_returns_200(self):
+        response = self.client.get(reverse("owner_members"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_all_members_shown_by_default(self):
+        response = self.client.get(reverse("owner_members"))
+        self.assertEqual(response.context["members"].count(), 3)
+
+    def test_search_by_name(self):
+        response = self.client.get(reverse("owner_members") + "?search=alice")
+        members = list(response.context["members"])
+        self.assertEqual(len(members), 1)
+        self.assertEqual(members[0].name, "Alice Mensah")
+
+    def test_search_by_phone(self):
+        response = self.client.get(reverse("owner_members") + "?search=444")
+        members = list(response.context["members"])
+        self.assertEqual(len(members), 1)
+        self.assertEqual(members[0].name, "Bob Asante")
+
+    def test_search_no_match_returns_empty(self):
+        response = self.client.get(reverse("owner_members") + "?search=zzz")
+        self.assertEqual(response.context["members"].count(), 0)
+
+    def test_department_filter(self):
+        response = self.client.get(reverse("owner_members") + "?department=Choir")
+        names = [m.name for m in response.context["members"]]
+        self.assertIn("Alice Mensah", names)
+        self.assertIn("Carol Osei",   names)
+        self.assertNotIn("Bob Asante", names)
+
+    def test_department_dropdown_contains_distinct_values(self):
+        response = self.client.get(reverse("owner_members"))
+        depts = list(response.context["departments"])
+        self.assertIn("Choir",  depts)
+        self.assertIn("Ushers", depts)
+        self.assertEqual(len(depts), 2)  # no duplicates
+
+    def test_members_sorted_by_attendance_descending(self):
+        """Alice has 2 check-ins; Bob and Carol have 0 — Alice should be first."""
+        response = self.client.get(reverse("owner_members"))
+        members = list(response.context["members"])
+        self.assertEqual(members[0].name, "Alice Mensah")
+
+    def test_combined_search_and_department_filter(self):
+        response = self.client.get(reverse("owner_members") + "?search=carol&department=Choir")
+        members = list(response.context["members"])
+        self.assertEqual(len(members), 1)
+        self.assertEqual(members[0].name, "Carol Osei")
+
+
+# ---------------------------------------------------------------------------
+# 6. Event Detail view — present / absent roster
+# ---------------------------------------------------------------------------
+@override_settings(TEMPLATES=[{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [], "APP_DIRS": False,
+    "OPTIONS": {
+        "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
+    },
+}])
+class OwnerEventDetailViewTests(TestCase):
+
+    def setUp(self):
+        self.user, _ = make_owner()
+        self.client.login(username="pastor", password="TestPass123")
+
+        self.member1 = make_member("Present Person", "666")
+        self.member2 = make_member("Absent Person",  "777")
+        self.event   = make_event("Big Service")
+
+        AttendanceLog.objects.create(member=self.member1, event=self.event)
+
+    def test_event_detail_returns_200(self):
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertEqual(response.status_code, 200)
+
+    def test_event_detail_404_for_missing_event(self):
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": 9999}))
+        self.assertEqual(response.status_code, 404)
+
+    def test_present_count_correct(self):
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertEqual(response.context["present_count"], 1)
+
+    def test_absent_count_correct(self):
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertEqual(response.context["absent_count"], 1)
+
+    def test_present_member_in_correct_list(self):
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        present_names = [m.name for m in response.context["present_members"]]
+        self.assertIn("Present Person", present_names)
+        self.assertNotIn("Absent Person", present_names)
+
+    def test_absent_member_in_correct_list(self):
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        absent_names = [m.name for m in response.context["absent_members"]]
+        self.assertIn("Absent Person", absent_names)
+        self.assertNotIn("Present Person", absent_names)
+
+    def test_attendance_percentage_correct(self):
+        # 1 present out of 2 total members = 50%
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertEqual(response.context["attendance_pct"], 50.0)
+
+    def test_attendance_pct_zero_when_no_members(self):
+        Member.objects.all().delete()
+        AttendanceLog.objects.all().delete()
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertEqual(response.context["attendance_pct"], 0)
+
+    def test_unauthenticated_redirected_from_event_detail(self):
+        self.client.logout()
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)

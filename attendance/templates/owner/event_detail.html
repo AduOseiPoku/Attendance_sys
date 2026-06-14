@@ -1,0 +1,269 @@
+{% extends "owner/base.html" %}
+{% block title %}{{ event.name }} — Roster{% endblock %}
+{% block page_title %}Event Roster{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .event-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .event-meta h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .event-meta .meta-row {
+    display: flex;
+    gap: 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .meta-row span { display: flex; align-items: center; gap: 6px; }
+
+  .pct-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 24px;
+    min-width: 110px;
+    text-align: center;
+  }
+
+  .pct-value {
+    font-size: 30px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .pct-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  /* Progress bar */
+  .progress-section { margin-bottom: 28px; }
+  .progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+  .progress-bar-bg {
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 100px;
+    transition: width 1s ease;
+  }
+
+  /* Roster panels */
+  .roster-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 750px) { .roster-grid { grid-template-columns: 1fr; } }
+
+  .roster-panel {
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-header h3 { font-size: 14px; font-weight: 600; }
+  .panel-present { background: rgba(52,211,153,.08); }
+  .panel-absent  { background: rgba(248,113,113,.08); }
+  .panel-header-present { background: rgba(52,211,153,.1); }
+  .panel-header-absent  { background: rgba(248,113,113,.1); }
+
+  .panel-header-present h3 { color: var(--green); }
+  .panel-header-absent  h3 { color: var(--red); }
+
+  .member-list {
+    list-style: none;
+    max-height: 480px;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+
+  .member-list::-webkit-scrollbar { width: 6px; }
+  .member-list::-webkit-scrollbar-track { background: transparent; }
+  .member-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
+
+  .member-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    color: var(--text);
+    transition: background .12s;
+  }
+
+  .member-list li:last-child { border-bottom: none; }
+  .member-list li:hover { background: rgba(255,255,255,.03); }
+
+  .member-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .avatar-present { background: rgba(52,211,153,.18); color: var(--green); }
+  .avatar-absent  { background: rgba(248,113,113,.18); color: var(--red); }
+
+  .member-info { flex: 1; }
+  .member-info .name { font-weight: 500; color: var(--text); }
+  .member-info .phone { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+  .empty-panel {
+    padding: 36px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+    transition: color .15s;
+  }
+
+  .back-link:hover { color: var(--text); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a href="{% url 'owner_dashboard' %}" class="back-link">← Back to Dashboard</a>
+
+<!-- Event Header -->
+<div class="event-header">
+  <div class="event-meta">
+    <h2>{{ event.name }}</h2>
+    <div class="meta-row">
+      <span>📅 {{ event.event_date }}</span>
+      <span>⏰ {{ event.event_time }}</span>
+      {% if event.description %}
+      <span>📝 {{ event.description|truncatechars:60 }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pct-badge">
+    <div class="pct-value">{{ attendance_pct }}%</div>
+    <div class="pct-label">Attendance Rate</div>
+  </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="progress-section">
+  <div class="progress-label">
+    <span>✅ {{ present_count }} present</span>
+    <span>❌ {{ absent_count }} absent</span>
+  </div>
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" data-width="{{ attendance_pct }}"></div>
+  </div>
+</div>
+
+<!-- Roster Panels -->
+<div class="roster-grid">
+
+  <!-- Present -->
+  <div class="roster-panel">
+    <div class="panel-header panel-header-present">
+      <h3>✅ Present Members</h3>
+      <span class="badge badge-green">{{ present_count }}</span>
+    </div>
+    {% if present_members %}
+    <ul class="member-list">
+      {% for member in present_members %}
+      <li>
+        <div class="member-avatar avatar-present">{{ member.name|first|upper }}</div>
+        <div class="member-info">
+          <div class="name">{{ member.name }}</div>
+          <div class="phone">{{ member.phone_number }}</div>
+        </div>
+        {% if member.department %}
+        <span class="badge badge-blue" style="font-size:11px;">{{ member.department }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-panel">No check-ins recorded yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Absent -->
+  <div class="roster-panel">
+    <div class="panel-header panel-header-absent">
+      <h3>❌ Absent Members</h3>
+      <span class="badge badge-red">{{ absent_count }}</span>
+    </div>
+    {% if absent_members %}
+    <ul class="member-list">
+      {% for member in absent_members %}
+      <li>
+        <div class="member-avatar avatar-absent">{{ member.name|first|upper }}</div>
+        <div class="member-info">
+          <div class="name">{{ member.name }}</div>
+          <div class="phone">{{ member.phone_number }}</div>
+        </div>
+        {% if member.department %}
+        <span class="badge" style="background:rgba(123,130,166,.12);color:var(--muted);font-size:11px;">{{ member.department }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-panel">🎉 Everyone attended this event!</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+  /* Set progress bar width from data attribute to avoid CSS linter warnings
+     caused by Django template tags inside inline style attributes. */
+  document.querySelectorAll('.progress-bar-fill[data-width]').forEach(function(el) {
+    el.style.width = el.getAttribute('data-width') + '%';
+  });
+</script>
+{% endblock %}

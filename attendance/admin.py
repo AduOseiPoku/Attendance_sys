@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Member, Event, AttendanceLog
+from .models import Member, Event, AttendanceLog, ChurchOwner
 
 
 @admin.register(Member)
@@ -29,3 +29,10 @@ class AttendanceLogAdmin(admin.ModelAdmin):
     raw_id_fields = ("member", "event")
     readonly_fields = ("timestamp",)
     ordering = ("-timestamp",)
+
+
+@admin.register(ChurchOwner)
+class ChurchOwnerAdmin(admin.ModelAdmin):
+    list_display = ("user", "church_name", "created_at")
+    search_fields = ("user__username", "church_name")
+    readonly_fields = ("created_at",)

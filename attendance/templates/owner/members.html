@@ -1,0 +1,257 @@
+{% extends "owner/base.html" %}
+{% block title %}Members{% endblock %}
+{% block page_title %}Members{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 380px;
+  }
+
+  .search-wrap .search-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 15px;
+    pointer-events: none;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 38px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+  .search-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,.12);
+  }
+
+  .search-wrap input::placeholder { color: var(--muted); }
+
+  .dept-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 36px 10px 14px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237b82a6' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color .2s;
+    min-width: 180px;
+  }
+
+  .dept-select:focus { border-color: var(--accent); }
+
+  .filter-submit {
+    background: linear-gradient(135deg, var(--accent), #8b7cff);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: opacity .18s, transform .15s;
+  }
+
+  .filter-submit:hover { opacity: .88; transform: translateY(-1px); }
+
+  .clear-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color .18s, color .18s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .results-info {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .member-name { font-weight: 600; color: var(--text); }
+  .dept-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    background: rgba(108,99,255,.12);
+    color: var(--accent);
+    border-radius: 100px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  .attend-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .attend-bar {
+    flex: 1;
+    max-width: 80px;
+    height: 5px;
+    background: var(--surface2);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .attend-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 100px;
+  }
+
+  .attend-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 20px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 56px 24px;
+    color: var(--muted);
+  }
+
+  .empty-state .emoji { font-size: 36px; margin-bottom: 12px; display: block; }
+  .empty-state p { font-size: 13.5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<form method="GET" id="filter-form">
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        name="search"
+        id="search-input"
+        placeholder="Search by name or phone…"
+        value="{{ search }}"
+      />
+    </div>
+
+    <!-- Department Dropdown -->
+    <select name="department" class="dept-select" id="dept-filter">
+      <option value="">All Departments</option>
+      {% for dept in departments %}
+        <option value="{{ dept }}" {% if dept == department %}selected{% endif %}>
+          {{ dept }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="filter-submit">Filter</button>
+
+    {% if search or department %}
+    <a href="{% url 'owner_members' %}" class="clear-btn">✕ Clear</a>
+    {% endif %}
+  </div>
+</form>
+
+<p class="results-info">
+  Showing <strong style="color:var(--text);">{{ members|length }}</strong> member{% if members|length != 1 %}s{% endif %}
+  {% if search %}matching "<strong style="color:var(--text);">{{ search }}</strong>"{% endif %}
+  {% if department %}in <strong style="color:var(--text);">{{ department }}</strong>{% endif %}
+</p>
+
+<!-- Members Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  {% if members %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Department</th>
+        <th>Attendances</th>
+        <th>Joined</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for member in members %}
+      <tr>
+        <td class="member-name">{{ member.name }}</td>
+        <td style="color:var(--muted); font-size:13px;">{{ member.phone_number }}</td>
+        <td>
+          {% if member.department %}
+            <span class="dept-tag">{{ member.department }}</span>
+          {% else %}
+            <span style="color:var(--muted); font-size:12px;">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="attend-bar-wrap">
+            <div class="attend-bar">
+              <div class="attend-bar-fill"
+                   data-width="{% if total_events > 0 %}{% widthratio member.total_attendances total_events 100 %}{% else %}0{% endif %}">
+              </div>
+            </div>
+            <span class="attend-count">{{ member.total_attendances }}</span>
+          </div>
+        </td>
+        <td style="color:var(--muted); font-size:12.5px;">{{ member.created_at|date:"M d, Y" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <span class="emoji">👥</span>
+    <p>No members found{% if search or department %} for the current filters{% endif %}.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+<script>
+  /* Apply attendance bar widths from data attributes to avoid
+     CSS linter warnings caused by Django template tags in style attributes. */
+  document.querySelectorAll('.attend-bar-fill[data-width]').forEach(function(el) {
+    el.style.width = el.getAttribute('data-width') + '%';
+  });
+</script>

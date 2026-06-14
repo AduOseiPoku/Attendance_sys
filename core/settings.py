@@ -129,3 +129,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ---------------------------------------------------------------------------
+# Church Owner Dashboard — Auth redirect settings
+# ---------------------------------------------------------------------------
+LOGIN_URL = '/owner/login/'
+LOGIN_REDIRECT_URL = '/owner/'
+LOGOUT_REDIRECT_URL = '/owner/login/'

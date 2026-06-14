@@ -1,15 +1,16 @@
-from django.shortcuts import render
-
-# Create your views here.
 # attendance/views.py
 import re
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from urllib.parse import urlencode
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.views.decorators.http import require_POST
 from django.db import IntegrityError
-from .models import Member, Event, AttendanceLog
+from django.db.models import Count, Q
+from django.contrib.auth import authenticate, login, logout
+from .models import Member, Event, AttendanceLog, ChurchOwner
+from .decorators import owner_required
 
 
 def normalize_phone(phone):
@@ -184,3 +185,143 @@ def quick_checkin(request, event_id):
     status_msg = "Attendance recorded." if log_created else "You have already checked in for this event."
 
     return render(request, "attendance/success.html", {"message": f"Welcome, {member.name}! {status_msg}"})
+
+
+# ---------------------------------------------------------------------------
+# Church Owner Dashboard Views
+# ---------------------------------------------------------------------------
+
+def owner_login(request):
+    """Custom login page restricted to ChurchOwner accounts."""
+    if request.user.is_authenticated and hasattr(request.user, "church_owner"):
+        return redirect("owner_dashboard")
+
+    error = None
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None and hasattr(user, "church_owner"):
+            login(request, user)
+            return redirect("owner_dashboard")
+        else:
+            error = "Invalid credentials, or this account is not registered as a church owner."
+
+    return render(request, "owner/login.html", {"error": error})
+
+
+def owner_logout(request):
+    """Logs out the church owner and redirects to login."""
+    logout(request)
+    return redirect("owner_login")
+
+
+@owner_required
+def owner_dashboard(request):
+    """Main dashboard: stat cards, bar chart (per-event), line chart (trend over time), recent events."""
+    owner = request.user.church_owner
+
+    # --- Stat cards ---
+    total_members   = Member.objects.count()
+    total_events    = Event.objects.count()
+    total_checkins  = AttendanceLog.objects.count()
+
+    # Avg attendance rate: (total check-ins / possible check-ins) * 100
+    possible = total_members * total_events
+    avg_rate = round((total_checkins / possible * 100), 1) if possible > 0 else 0
+
+    # --- Chart data: events ordered chronologically for both charts ---
+    events_qs = (
+        Event.objects
+        .annotate(attendee_count=Count("attendance_logs"))
+        .order_by("event_date", "event_time")
+    )
+
+    chart_labels = [f"{e.name} ({e.event_date})" for e in events_qs]
+    chart_data   = [e.attendee_count for e in events_qs]
+
+    # --- Recent events table (last 5, newest first) ---
+    recent_events = (
+        Event.objects
+        .annotate(attendee_count=Count("attendance_logs"))
+        .order_by("-event_date", "-event_time")[:5]
+    )
+
+    context = {
+        "owner": owner,
+        "total_members":  total_members,
+        "total_events":   total_events,
+        "total_checkins": total_checkins,
+        "avg_rate":       avg_rate,
+        "chart_labels":   json.dumps(chart_labels),
+        "chart_data":     json.dumps(chart_data),
+        "recent_events":  recent_events,
+    }
+    return render(request, "owner/dashboard.html", context)
+
+
+@owner_required
+def owner_members(request):
+    """Member list with search bar and department filter dropdown."""
+    owner = request.user.church_owner
+
+    search     = request.GET.get("search", "").strip()
+    department = request.GET.get("department", "").strip()
+
+    members_qs = Member.objects.annotate(total_attendances=Count("attendance_logs"))
+
+    if search:
+        members_qs = members_qs.filter(
+            Q(name__icontains=search) | Q(phone_number__icontains=search)
+        )
+
+    if department:
+        members_qs = members_qs.filter(department=department)
+
+    members_qs = members_qs.order_by("-total_attendances")
+
+    # Populate the department dropdown with all distinct non-null department values
+    departments = (
+        Member.objects
+        .exclude(department__isnull=True)
+        .exclude(department="")
+        .values_list("department", flat=True)
+        .distinct()
+        .order_by("department")
+    )
+
+    context = {
+        "owner":        owner,
+        "members":      members_qs,
+        "departments":  departments,
+        "search":       search,
+        "department":   department,
+        "total_events": Event.objects.count(),
+    }
+    return render(request, "owner/members.html", context)
+
+
+@owner_required
+def owner_event_detail(request, pk):
+    """Per-event Present / Absent roster with attendance percentage."""
+    owner = request.user.church_owner
+    event = get_object_or_404(Event, pk=pk)
+
+    present_member_ids = AttendanceLog.objects.filter(event=event).values_list("member_id", flat=True)
+    present_members    = Member.objects.filter(id__in=present_member_ids).order_by("name")
+    absent_members     = Member.objects.exclude(id__in=present_member_ids).order_by("name")
+
+    total    = Member.objects.count()
+    pct      = round(present_members.count() / total * 100, 1) if total > 0 else 0
+
+    context = {
+        "owner":           owner,
+        "event":           event,
+        "present_members": present_members,
+        "absent_members":  absent_members,
+        "present_count":   present_members.count(),
+        "absent_count":    absent_members.count(),
+        "attendance_pct":  pct,
+    }
+    return render(request, "owner/event_detail.html", context)
