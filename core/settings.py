@@ -78,15 +78,15 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+from decouple import config
+import dj_database_url
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'attendance_db',
-        'USER': 'attendance_admin',
-        'PASSWORD': 'Prince@2406',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': config(
+        'DATABASE_URL',
+        default='postgres://attendance_admin:Prince@2406@localhost:5432/attendance_db',
+        cast=dj_database_url.parse
+    )
 }
 
 
