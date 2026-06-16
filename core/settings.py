@@ -79,32 +79,16 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-import os
+from decouple import config
+import dj_database_url
 
-if os.environ.get('RAILWAY_ENVIRONMENT'):
-    # --- Production (Railway) ---
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('PGDATABASE', 'railway'),
-            'USER': os.environ.get('PGUSER', 'postgres'),
-            'PASSWORD': os.environ.get('PGPASSWORD'),
-            'HOST': os.environ.get('PGHOST', 'postgres.railway.internal'),
-            'PORT': os.environ.get('PGPORT', '5432'),
-        }
-    }
-else:
-    # --- Local development ---
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'attendance_db',
-            'USER': 'attendance_admin',
-            'PASSWORD': 'Prince@2406',
-            'HOST': 'localhost',
-            'PORT': '5432',
-        }
-    }
+DATABASES = {
+    'default': config(
+        'DATABASE_URL',
+        default='postgresql://postgres:HxMQNIsMIRbTgspYkTEKwMWAeRbCDrPd@centerbeam.proxy.rlwy.net:17397/railway',
+        cast=dj_database_url.parse
+    )
+}
 
 
 # Password validation
