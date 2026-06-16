@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-kt0i(3gdbu$f)1*va5c_cz^fqc!_9j&r16_pire^+ujnim-y(2
 import os
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.up.railway.app']
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -85,7 +85,7 @@ import dj_database_url
 DATABASES = {
     'default': config(
         'DATABASE_URL',
-        default='postgresql://postgres:HxMQNIsMIRbTgspYkTEKwMWAeRbCDrPd@centerbeam.proxy.rlwy.net:17397/railway',
+        default='postgresql://postgres:NUMiXIWEBrRjBxderpXVpbfXQCGTwgOO@postgres.railway.internal:5432/railway',
         cast=dj_database_url.parse
     )
 }
