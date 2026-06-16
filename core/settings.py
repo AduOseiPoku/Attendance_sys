@@ -85,7 +85,7 @@ import dj_database_url
 DATABASES = {
     'default': config(
         'DATABASE_URL',
-        default='postgresql://postgres:NUMiXIWEBrRjBxderpXVpbfXQCGTwgOO@postgres.railway.internal:5432/railway',
+        default='postgresql://postgres:AhPgwxksVacMhzaeBHIrtWJclVlhXDHH@postgres-azp5.railway.internal:5432/railway',
         cast=dj_database_url.parse
     )
 }
