@@ -79,7 +79,13 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-if DEBUG:
+import dj_database_url
+
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(conn_max_age=600, ssl_require=False)
+    }
+else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -89,17 +95,6 @@ if DEBUG:
             'HOST': 'localhost',
             'PORT': '5432',
         }
-    }
-else:
-    from decouple import config
-    import dj_database_url
-
-    DATABASES = {
-        'default': config(
-            'DATABASE_URL',
-            default='postgresql://postgres:AhPgwxksVacMhzaeBHIrtWJclVlhXDHH@postgres-azp5.railway.internal:5432/railway',
-            cast=dj_database_url.parse
-        )
     }
 
 
