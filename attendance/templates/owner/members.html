@@ -206,6 +206,8 @@
       <tr>
         <th>Name</th>
         <th>Phone</th>
+        <th>Emergency Contact</th>
+        <th>Address</th>
         <th>Department</th>
         <th>Attendances</th>
         <th>Joined</th>
@@ -216,6 +218,10 @@
       <tr>
         <td class="member-name">{{ member.name }}</td>
         <td style="color:var(--muted); font-size:13px;">{{ member.phone_number }}</td>
+        <td style="color:var(--muted); font-size:13px;">{{ member.emergency_phone_number }}</td>
+        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px;" title="{{ member.address }}">
+          {{ member.address }}
+        </td>
         <td>
           {% if member.department %}
             <span class="dept-tag">{{ member.department }}</span>

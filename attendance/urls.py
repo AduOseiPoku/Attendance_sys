@@ -3,6 +3,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('', views.global_landing, name='global_landing'),
+    path('api/church-events/<int:church_id>/', views.get_church_events, name='get_church_events'),
     # --- Member-facing check-in flows ---
     path('scan/<int:event_id>/', views.scan_landing, name='scan_landing'),
     path('onboard/<int:event_id>/', views.onboard_member, name='onboard_member'),

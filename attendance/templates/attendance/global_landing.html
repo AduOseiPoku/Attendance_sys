@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Your Church</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full text-center">
+        <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl">⛪</div>
+        <h2 class="text-2xl font-bold text-slate-800">Welcome</h2>
+        <p class="text-slate-500 mt-1">Please select your church to log attendance</p>
+
+        <div class="mt-6 text-left space-y-4">
+            <div>
+                <label for="churchSelect" class="block text-sm font-medium text-slate-600">Select Church</label>
+                <select id="churchSelect" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    <option value="">-- Choose Church --</option>
+                    {% for church in churches %}
+                        <option value="{{ church.id }}" {% if church.id == selected_church_id %}selected{% endif %}>{{ church.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="eventSection" class="hidden">
+                <label for="eventSelect" class="block text-sm font-medium text-slate-600">Select Event</label>
+                <select id="eventSelect" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    <option value="">-- Choose Event --</option>
+                    {% for event in events %}
+                        <option value="{{ event.id }}">{{ event.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button id="proceedBtn" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition opacity-50 cursor-not-allowed" disabled>
+                Proceed to Check-In
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const churchSelect = document.getElementById('churchSelect');
+        const eventSelect = document.getElementById('eventSelect');
+        const eventSection = document.getElementById('eventSection');
+        const proceedBtn = document.getElementById('proceedBtn');
+
+        function updateEventOptions(events) {
+            eventSelect.innerHTML = '<option value="">-- Choose Event --</option>';
+            events.forEach(event => {
+                const opt = document.createElement('option');
+                opt.value = event.id;
+                opt.textContent = event.name;
+                eventSelect.appendChild(opt);
+            });
+            if (events.length > 0) {
+                eventSection.classList.remove('hidden');
+            } else {
+                eventSection.classList.add('hidden');
+                alert('No active events found for this church.');
+            }
+        }
+
+        churchSelect.addEventListener('change', function() {
+            const churchId = this.value;
+            if (!churchId) {
+                eventSection.classList.add('hidden');
+                proceedBtn.disabled = true;
+                proceedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            fetch(`/api/church-events/${churchId}/`)
+                .then(res => res.json())
+                .then(data => {
+                    updateEventOptions(data.events || []);
+                })
+                .catch(err => {
+                    console.error('Error fetching events:', err);
+                });
+        });
+
+        eventSelect.addEventListener('change', function() {
+            if (this.value) {
+                proceedBtn.disabled = false;
+                proceedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                proceedBtn.disabled = true;
+                proceedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+        proceedBtn.addEventListener('click', function() {
+            const eventId = eventSelect.value;
+            if (eventId) {
+                window.location.href = `/scan/${eventId}/`;
+            }
+        });
+    </script>
+</body>
+</html>

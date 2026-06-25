@@ -4,17 +4,41 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+class Church(models.Model):
+    name = models.CharField(
+        max_length=200,
+        unique=True
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "Churches"
+
+    def __str__(self):
+        return self.name
+
+
 class Member(models.Model):
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="members",
+        null=True,
+        blank=True
+    )
+
     # Optimized for name lookups
     name = models.CharField(
         max_length=100,
         db_index=True
     )
 
-    # Main unique identifier
+    # Phone number is unique per church, handled via Meta constraints
     phone_number = models.CharField(
         max_length=20,
-        unique=True,
         db_index=True
     )
 
@@ -41,12 +65,28 @@ class Member(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["church", "phone_number"],
+                name="unique_church_member_phone"
+            )
+        ]
 
     def __str__(self):
+        if self.church:
+            return f"{self.name} ({self.phone_number}) - {self.church.name}"
         return f"{self.name} ({self.phone_number})"
 
 
 class Event(models.Model):
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="events",
+        null=True,
+        blank=True
+    )
+
     name = models.CharField(
         max_length=200
     )
@@ -60,6 +100,11 @@ class Event(models.Model):
 
     event_time = models.TimeField()
 
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )
@@ -72,10 +117,20 @@ class Event(models.Model):
         ordering = ["-event_date", "-event_time"]
 
     def __str__(self):
+        if self.church:
+            return f"{self.name} ({self.event_date}) - {self.church.name}"
         return f"{self.name} ({self.event_date})"
 
 
 class AttendanceLog(models.Model):
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="attendance_logs",
+        null=True,
+        blank=True
+    )
+
     member = models.ForeignKey(
         Member,
         on_delete=models.CASCADE,
@@ -117,6 +172,14 @@ class ChurchOwner(models.Model):
         related_name="church_owner"
     )
 
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="owners",
+        null=True,
+        blank=True
+    )
+
     church_name = models.CharField(
         max_length=200,
         default="My Church"
@@ -125,4 +188,6 @@ class ChurchOwner(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Owner: {self.user.username} ({self.church_name})"
+        church_lbl = self.church.name if self.church else self.church_name
+        return f"Owner: {self.user.username} ({church_lbl})"
+

@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import AttendanceLog, Event, Member
+from .models import AttendanceLog, Event, Member, Church, ChurchOwner
 
 # Minimal in-memory templates so assertTemplateUsed works during tests
 LOC_MEM_TEMPLATES = {
@@ -49,7 +49,9 @@ class MemberModelTests(TestCase):
         self.assertEqual(names, ["Alice", "Zoe"])
 
     def test_phone_number_must_be_unique(self):
+        church = Church.objects.create(name="Test Church Legacy Unique")
         Member.objects.create(
+            church=church,
             name="First User",
             phone_number="+233500000020",
             emergency_phone_number="+233500000120",
@@ -57,6 +59,7 @@ class MemberModelTests(TestCase):
         )
         with self.assertRaises(IntegrityError):
             Member.objects.create(
+                church=church,
                 name="Second User",
                 phone_number="+233500000020",  # duplicate
                 emergency_phone_number="+233500000121",
@@ -654,4 +657,118 @@ class OwnerEventDetailViewTests(TestCase):
     def test_unauthenticated_redirected_from_event_detail(self):
         self.client.logout()
         response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
-        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+
+
+# ---------------------------------------------------------------------------
+# Multi-Tenancy / Church Isolation Tests
+# ---------------------------------------------------------------------------
+class MultiTenancyTests(TestCase):
+
+    def setUp(self):
+        # Create two churches
+        self.church_a = Church.objects.create(name="Church A")
+        self.church_b = Church.objects.create(name="Church B")
+
+        # Create owners for both churches
+        self.user_a = User.objects.create_user(username="pastor_a", password="Password123")
+        self.owner_a = ChurchOwner.objects.create(user=self.user_a, church=self.church_a, church_name="Church A")
+
+        self.user_b = User.objects.create_user(username="pastor_b", password="Password123")
+        self.owner_b = ChurchOwner.objects.create(user=self.user_b, church=self.church_b, church_name="Church B")
+
+    def test_phone_number_uniqueness_isolated_per_church(self):
+        # Register same phone number in Church A
+        member_a = Member.objects.create(
+            church=self.church_a,
+            name="John Doe",
+            phone_number="233241234567",
+            emergency_phone_number="000",
+            address="Accra"
+        )
+        self.assertEqual(Member.objects.filter(phone_number="233241234567").count(), 1)
+
+        # Register same phone number in Church B - should succeed
+        member_b = Member.objects.create(
+            church=self.church_b,
+            name="John Doe",
+            phone_number="233241234567",
+            emergency_phone_number="000",
+            address="Kumasi"
+        )
+        self.assertEqual(Member.objects.filter(phone_number="233241234567").count(), 2)
+
+        # Registering same phone number in Church A again should raise IntegrityError
+        with self.assertRaises(IntegrityError):
+            Member.objects.create(
+                church=self.church_a,
+                name="Another John",
+                phone_number="233241234567",
+                emergency_phone_number="111",
+                address="Accra"
+            )
+
+    @override_settings(TEMPLATES=[{
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [], "APP_DIRS": False,
+        "OPTIONS": {
+            "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    }])
+    def test_church_data_isolation(self):
+        # Create members for Church A and B
+        member_a = Member.objects.create(
+            church=self.church_a,
+            name="Member A",
+            phone_number="111",
+            emergency_phone_number="000",
+            address="Accra"
+        )
+        member_b = Member.objects.create(
+            church=self.church_b,
+            name="Member B",
+            phone_number="222",
+            emergency_phone_number="000",
+            address="Accra"
+        )
+
+        # Create events for Church A and B
+        event_a = Event.objects.create(
+            church=self.church_a,
+            name="Event A",
+            event_date=date.today(),
+            event_time=time(9, 0)
+        )
+        event_b = Event.objects.create(
+            church=self.church_b,
+            name="Event B",
+            event_date=date.today(),
+            event_time=time(9, 0)
+        )
+
+        # Login as Pastor A
+        self.client.login(username="pastor_a", password="Password123")
+
+        # Check dashboard metrics for Church A
+        response = self.client.get(reverse("owner_dashboard"))
+        self.assertEqual(response.context["total_members"], 1)
+        self.assertEqual(response.context["total_events"], 1)
+
+        # Check members list for Church A
+        response = self.client.get(reverse("owner_members"))
+        members = [m.name for m in response.context["members"]]
+        self.assertIn("Member A", members)
+        self.assertNotIn("Member B", members)
+
+        # Check event detail for Church A event
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": event_a.pk}))
+        self.assertEqual(response.status_code, 200)
+
+        # Attempting to access Church B event should return 404
+        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": event_b.pk}))
+        self.assertEqual(response.status_code, 404)

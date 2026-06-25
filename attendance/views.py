@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.contrib.auth import authenticate, login, logout
-from .models import Member, Event, AttendanceLog, ChurchOwner
+from .models import Member, Event, AttendanceLog, ChurchOwner, Church
 from .decorators import owner_required
 
 
@@ -33,6 +33,7 @@ def mask_phone(phone):
 def scan_landing(request, event_id):
     """Main entry point handling check-ins, exact/partial matches, and naming collisions."""
     event = get_object_or_404(Event, id=event_id)
+    church = event.church
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -45,13 +46,17 @@ def scan_landing(request, event_id):
                 "error": "Both Name and Phone Number are required."
             })
 
-        # Scenario 1: Direct unique lookup based on phone index
-        member = Member.objects.filter(phone_number=phone).first()
+        # Scenario 1: Direct unique lookup based on phone index (per church)
+        member = Member.objects.filter(church=church, phone_number=phone).first()
 
         if member:
             # Case A: Names match perfectly
             if member.name.lower() == name.lower():
-                log, created = AttendanceLog.objects.get_or_create(member=member, event=event)
+                log, created = AttendanceLog.objects.get_or_create(
+                    member=member, 
+                    event=event,
+                    defaults={"church": church}
+                )
                 status_msg = "Attendance recorded." if created else "You have already checked in for this event."
                 return render(request, "attendance/success.html", {
                     "message": f"Welcome back, {member.name}! {status_msg}"
@@ -65,9 +70,8 @@ def scan_landing(request, event_id):
                 "typed_phone": raw_phone,
             })
 
-        # Scenario 2: Handle Duplicate Names / Clashing Profiles
-        # Search using case-insensitive lookups optimized by our new name database index
-        name_matches = Member.objects.filter(name__iexact=name)
+        # Scenario 2: Handle Duplicate Names / Clashing Profiles (per church)
+        name_matches = Member.objects.filter(church=church, name__iexact=name)
 
         if name_matches.exists():
             if name_matches.count() == 1:
@@ -82,7 +86,6 @@ def scan_landing(request, event_id):
                 })
             else:
                 # DUPLICATE-NAME HANDLING: Multiple members share this identical name
-                # Send them to a secure selector layout displaying masked parameters
                 members_data = [
                     {"id": m.id, "masked_phone": mask_phone(m.phone_number)}
                     for m in name_matches
@@ -105,6 +108,7 @@ def scan_landing(request, event_id):
 def onboard_member(request, event_id):
     """Registers a completely new member while enforcing phone normalization."""
     event = get_object_or_404(Event, id=event_id)
+    church = event.church
 
     suggested_name = request.GET.get("name", "")
     suggested_phone = normalize_phone(request.GET.get("phone", ""))
@@ -118,6 +122,7 @@ def onboard_member(request, event_id):
 
         try:
             member, created = Member.objects.get_or_create(
+                church=church,
                 phone_number=phone_number,
                 defaults={
                     "name": name,
@@ -127,7 +132,11 @@ def onboard_member(request, event_id):
                 }
             )
             
-            log, log_created = AttendanceLog.objects.get_or_create(member=member, event=event)
+            log, log_created = AttendanceLog.objects.get_or_create(
+                member=member, 
+                event=event,
+                defaults={"church": church}
+            )
             status_msg = "Attendance recorded." if log_created else "You have already checked in for this event."
 
             return render(request, "attendance/success.html", {
@@ -157,7 +166,11 @@ def confirm_identity(request, event_id, member_id):
     event = get_object_or_404(Event, id=event_id)
     member = get_object_or_404(Member, id=member_id)
 
-    log, created = AttendanceLog.objects.get_or_create(member=member, event=event)
+    log, created = AttendanceLog.objects.get_or_create(
+        member=member, 
+        event=event,
+        defaults={"church": event.church}
+    )
     status_msg = "Attendance recorded." if created else "You have already checked in for this event."
 
     return render(request, "attendance/success.html", {
@@ -169,6 +182,7 @@ def confirm_identity(request, event_id, member_id):
 def quick_checkin(request, event_id):
     """Fast path: create or find a member and record attendance with one click."""
     event = get_object_or_404(Event, id=event_id)
+    church = event.church
     name = request.POST.get("name", "").strip()
     raw_phone = request.POST.get("phone", "").strip()
     phone = normalize_phone(raw_phone)
@@ -177,11 +191,16 @@ def quick_checkin(request, event_id):
         return render(request, "attendance/scan_landing.html", {"event": event, "error": "Name and phone required."})
 
     member, created = Member.objects.get_or_create(
+        church=church,
         phone_number=phone,
         defaults={"name": name}
     )
 
-    log, log_created = AttendanceLog.objects.get_or_create(member=member, event=event)
+    log, log_created = AttendanceLog.objects.get_or_create(
+        member=member, 
+        event=event,
+        defaults={"church": church}
+    )
     status_msg = "Attendance recorded." if log_created else "You have already checked in for this event."
 
     return render(request, "attendance/success.html", {"message": f"Welcome, {member.name}! {status_msg}"})
@@ -221,11 +240,12 @@ def owner_logout(request):
 def owner_dashboard(request):
     """Main dashboard: stat cards, bar chart (per-event), line chart (trend over time), recent events."""
     owner = request.user.church_owner
+    church = owner.church
 
     # --- Stat cards ---
-    total_members   = Member.objects.count()
-    total_events    = Event.objects.count()
-    total_checkins  = AttendanceLog.objects.count()
+    total_members   = Member.objects.filter(church=church).count()
+    total_events    = Event.objects.filter(church=church).count()
+    total_checkins  = AttendanceLog.objects.filter(church=church).count()
 
     # Avg attendance rate: (total check-ins / possible check-ins) * 100
     possible = total_members * total_events
@@ -233,7 +253,7 @@ def owner_dashboard(request):
 
     # --- Chart data: events ordered chronologically for both charts ---
     events_qs = (
-        Event.objects
+        Event.objects.filter(church=church)
         .annotate(attendee_count=Count("attendance_logs"))
         .order_by("event_date", "event_time")
     )
@@ -243,7 +263,7 @@ def owner_dashboard(request):
 
     # --- Recent events table (last 5, newest first) ---
     recent_events = (
-        Event.objects
+        Event.objects.filter(church=church)
         .annotate(attendee_count=Count("attendance_logs"))
         .order_by("-event_date", "-event_time")[:5]
     )
@@ -265,11 +285,12 @@ def owner_dashboard(request):
 def owner_members(request):
     """Member list with search bar and department filter dropdown."""
     owner = request.user.church_owner
+    church = owner.church
 
     search     = request.GET.get("search", "").strip()
     department = request.GET.get("department", "").strip()
 
-    members_qs = Member.objects.annotate(total_attendances=Count("attendance_logs"))
+    members_qs = Member.objects.filter(church=church).annotate(total_attendances=Count("attendance_logs"))
 
     if search:
         members_qs = members_qs.filter(
@@ -283,7 +304,7 @@ def owner_members(request):
 
     # Populate the department dropdown with all distinct non-null department values
     departments = (
-        Member.objects
+        Member.objects.filter(church=church)
         .exclude(department__isnull=True)
         .exclude(department="")
         .values_list("department", flat=True)
@@ -297,7 +318,7 @@ def owner_members(request):
         "departments":  departments,
         "search":       search,
         "department":   department,
-        "total_events": Event.objects.count(),
+        "total_events": Event.objects.filter(church=church).count(),
     }
     return render(request, "owner/members.html", context)
 
@@ -306,13 +327,14 @@ def owner_members(request):
 def owner_event_detail(request, pk):
     """Per-event Present / Absent roster with attendance percentage."""
     owner = request.user.church_owner
-    event = get_object_or_404(Event, pk=pk)
+    church = owner.church
+    event = get_object_or_404(Event, pk=pk, church=church)
 
     present_member_ids = AttendanceLog.objects.filter(event=event).values_list("member_id", flat=True)
-    present_members    = Member.objects.filter(id__in=present_member_ids).order_by("name")
-    absent_members     = Member.objects.exclude(id__in=present_member_ids).order_by("name")
+    present_members    = Member.objects.filter(church=church, id__in=present_member_ids).order_by("name")
+    absent_members     = Member.objects.filter(church=church).exclude(id__in=present_member_ids).order_by("name")
 
-    total    = Member.objects.count()
+    total    = Member.objects.filter(church=church).count()
     pct      = round(present_members.count() / total * 100, 1) if total > 0 else 0
 
     context = {
@@ -324,4 +346,33 @@ def owner_event_detail(request, pk):
         "absent_count":    absent_members.count(),
         "attendance_pct":  pct,
     }
-    return render(request, "owner/event_detail.html", context)
+    return render(request, "owner/event_detail.html", context)
+
+
+def global_landing(request):
+    """Renders the global entry page for selecting a church and event."""
+    churches = Church.objects.all()
+    selected_church_id = request.GET.get("church")
+    events = []
+    
+    if selected_church_id:
+        church = get_object_or_404(Church, id=selected_church_id)
+        events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")
+
+    return render(request, "attendance/global_landing.html", {
+        "churches": churches,
+        "selected_church_id": int(selected_church_id) if selected_church_id and selected_church_id.isdigit() else None,
+        "events": events,
+    })
+
+
+def get_church_events(request, church_id):
+    """API endpoint returning events for a specific church as JSON."""
+    church = get_object_or_404(Church, id=church_id)
+    events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")
+    data = [
+        {"id": event.id, "name": f"{event.name} ({event.event_date})"}
+        for event in events
+    ]
+    from django.http import JsonResponse
+    return JsonResponse({"events": data})

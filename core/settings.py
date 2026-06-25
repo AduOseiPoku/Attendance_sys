@@ -79,16 +79,28 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-from decouple import config
-import dj_database_url
+if DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'attendance_db',
+            'USER': 'attendance_admin',
+            'PASSWORD': 'Prince@2406',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
+else:
+    from decouple import config
+    import dj_database_url
 
-DATABASES = {
-    'default': config(
-        'DATABASE_URL',
-        default='postgresql://postgres:AhPgwxksVacMhzaeBHIrtWJclVlhXDHH@postgres-azp5.railway.internal:5432/railway',
-        cast=dj_database_url.parse
-    )
-}
+    DATABASES = {
+        'default': config(
+            'DATABASE_URL',
+            default='postgresql://postgres:AhPgwxksVacMhzaeBHIrtWJclVlhXDHH@postgres-azp5.railway.internal:5432/railway',
+            cast=dj_database_url.parse
+        )
+    }
 
 
 # Password validation
