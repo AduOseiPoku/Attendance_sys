@@ -76,26 +76,25 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+from decouple import config
 import dj_database_url
 
-if os.environ.get('DATABASE_URL'):
+# Use dj_database_url to parse the DATABASE_URL environment variable.
+# Fallback to local postgres or SQLite if DATABASE_URL is not set.
+DATABASE_URL = config('DATABASE_URL', default='')
+
+if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.config(conn_max_age=600, ssl_require=False)
+        'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'attendance_db',
-            'USER': 'attendance_admin',
-            'PASSWORD': 'Prince@2406',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
 
 
 # Password validation
@@ -149,8 +148,13 @@ LOGIN_REDIRECT_URL = '/owner/'
 LOGOUT_REDIRECT_URL = '/owner/login/'
 
 # CSRF Trusted Origins for production security
-CSRF_TRUSTED_ORIGINS = [
-    'https://*.up.railway.app',
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-]
+CSRF_TRUSTED_ORIGINS_ENV = config('CSRF_TRUSTED_ORIGINS', default='')
+if CSRF_TRUSTED_ORIGINS_ENV:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',')]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://*.up.railway.app',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+    ]
+
