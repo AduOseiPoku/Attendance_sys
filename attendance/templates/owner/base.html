@@ -255,6 +255,12 @@
          class="nav-link {% if request.resolver_match.url_name == 'owner_members' %}active{% endif %}">
         <span class="nav-icon">👥</span> Members
       </a>
+
+      <span class="nav-section-label">Actions</span>
+      <a href="{% url 'owner_create_event' %}"
+         class="nav-link {% if request.resolver_match.url_name == 'owner_create_event' %}active{% endif %}">
+        <span class="nav-icon">➕</span> Create Event
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -279,5 +285,6 @@
     </div>
   </div>
 
+  {% block extra_scripts %}{% endblock %}
 </body>
 </html>

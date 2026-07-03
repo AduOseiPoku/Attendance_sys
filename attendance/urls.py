@@ -19,4 +19,6 @@ urlpatterns = [
     path('owner/',                    views.owner_dashboard,     name='owner_dashboard'),
     path('owner/members/',            views.owner_members,       name='owner_members'),
     path('owner/event/<int:pk>/',     views.owner_event_detail,  name='owner_event_detail'),
+    path('owner/event/<int:pk>/toggle/', views.owner_toggle_event_status, name='owner_toggle_event_status'),
+    path('owner/event/create/',        views.owner_create_event,  name='owner_create_event'),
 ]

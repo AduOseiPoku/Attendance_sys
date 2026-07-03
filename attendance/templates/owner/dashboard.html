@@ -180,7 +180,10 @@
 <div class="card">
   <div class="section-header">
     <h3>🕐 Recent Events</h3>
-    <a href="{% url 'owner_dashboard' %}" class="link-accent" style="font-size:13px;">View all</a>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a href="{% url 'owner_create_event' %}" class="link-accent" style="font-size:13px;background:rgba(108,99,255,.12);padding:6px 14px;border-radius:8px;">➕ Create Event</a>
+      <a href="{% url 'owner_dashboard' %}" class="link-accent" style="font-size:13px;">View all</a>
+    </div>
   </div>
 
   {% if recent_events %}
@@ -197,7 +200,14 @@
     <tbody>
       {% for event in recent_events %}
       <tr>
-        <td style="font-weight:500;">{{ event.name }}</td>
+        <td style="font-weight:500;">
+          {{ event.name }}
+          {% if event.is_active %}
+            <span class="badge badge-green" style="margin-left: 8px; font-size: 10px;">🟢 Active</span>
+          {% else %}
+            <span class="badge" style="background: rgba(255,255,255,.05); color: var(--muted); margin-left: 8px; font-size: 10px;">⚪ Closed</span>
+          {% endif %}
+        </td>
         <td style="color:var(--muted);">{{ event.event_date }}</td>
         <td style="color:var(--muted);">{{ event.event_time }}</td>
         <td>
@@ -213,15 +223,15 @@
   {% else %}
   <div class="empty-state">
     <span class="emoji">📭</span>
-    No events have been created yet. Create an event in the Django Admin to get started.
+    No events have been created yet.<br>
+    <a href="{% url 'owner_create_event' %}" class="link-accent" style="margin-top:12px;display:inline-block;">➕ Create your first event</a>
   </div>
   {% endif %}
 </div>
 
 {% endblock %}
 
-{% block extra_scripts %}{% endblock %}
-
+{% block extra_scripts %}
 <!-- Chart data passed via JSON script tags to avoid JS linter warnings
      caused by Django template tags inside <script> blocks. -->
 <script type="application/json" id="chart-labels-data">{{ chart_labels|safe }}</script>
@@ -309,3 +319,4 @@ new Chart(document.getElementById('lineChart'), {
   options: sharedOptions,
 });
 </script>
+{% endblock %}

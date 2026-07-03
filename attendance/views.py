@@ -251,15 +251,16 @@ def owner_dashboard(request):
     possible = total_members * total_events
     avg_rate = round((total_checkins / possible * 100), 1) if possible > 0 else 0
 
-    # --- Chart data: events ordered chronologically for both charts ---
-    events_qs = (
+    # --- Chart data: last 5 events ordered chronologically for both charts ---
+    last_5_events = list(
         Event.objects.filter(church=church)
         .annotate(attendee_count=Count("attendance_logs"))
-        .order_by("event_date", "event_time")
+        .order_by("-event_date", "-event_time")[:5]
     )
+    last_5_events.reverse()
 
-    chart_labels = [f"{e.name} ({e.event_date})" for e in events_qs]
-    chart_data   = [e.attendee_count for e in events_qs]
+    chart_labels = [f"{e.name} ({e.event_date})" for e in last_5_events]
+    chart_data   = [e.attendee_count for e in last_5_events]
 
     # --- Recent events table (last 5, newest first) ---
     recent_events = (
@@ -349,6 +350,82 @@ def owner_event_detail(request, pk):
     return render(request, "owner/event_detail.html", context)
 
 
+@owner_required
+@require_POST
+def owner_toggle_event_status(request, pk):
+    """Toggles an event between active and closed."""
+    owner = request.user.church_owner
+    event = get_object_or_404(Event, pk=pk, church=owner.church)
+    
+    event.is_active = not event.is_active
+    event.save(update_fields=["is_active"])
+    
+    return redirect("owner_event_detail", pk=event.pk)
+
+
+@owner_required
+def owner_create_event(request):
+    """Allow church owners to create a new event from their dashboard."""
+    owner = request.user.church_owner
+    church = owner.church
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        event_date = request.POST.get("event_date", "").strip()
+        event_time = request.POST.get("event_time", "").strip()
+        is_active = request.POST.get("is_active") == "on"
+
+        errors = []
+        if not name:
+            errors.append("Event name is required.")
+        if not event_date:
+            errors.append("Event date is required.")
+        if not event_time:
+            errors.append("Event time is required.")
+
+        if errors:
+            return render(request, "owner/create_event.html", {
+                "owner": owner,
+                "errors": errors,
+                "form_data": {
+                    "name": name,
+                    "description": description,
+                    "event_date": event_date,
+                    "event_time": event_time,
+                    "is_active": is_active,
+                },
+            })
+
+        from datetime import date, time as dt_time
+
+        try:
+            Event.objects.create(
+                church=church,
+                name=name,
+                description=description or None,
+                event_date=event_date,
+                event_time=event_time,
+                is_active=is_active,
+            )
+        except Exception as e:
+            return render(request, "owner/create_event.html", {
+                "owner": owner,
+                "errors": [f"Could not create event: {e}"],
+                "form_data": {
+                    "name": name,
+                    "description": description,
+                    "event_date": event_date,
+                    "event_time": event_time,
+                    "is_active": is_active,
+                },
+            })
+
+        return redirect("owner_dashboard")
+
+    return render(request, "owner/create_event.html", {"owner": owner})
+
+
 def global_landing(request):
     """Renders the global entry page for selecting a church and event."""
     churches = Church.objects.all()
@@ -357,7 +434,7 @@ def global_landing(request):
     
     if selected_church_id:
         church = get_object_or_404(Church, id=selected_church_id)
-        events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")
+        events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")[:3]
 
     return render(request, "attendance/global_landing.html", {
         "churches": churches,
@@ -369,7 +446,7 @@ def global_landing(request):
 def get_church_events(request, church_id):
     """API endpoint returning events for a specific church as JSON."""
     church = get_object_or_404(Church, id=church_id)
-    events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")
+    events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")[:3]
     data = [
         {"id": event.id, "name": f"{event.name} ({event.event_date})"}
         for event in events

@@ -176,7 +176,21 @@
 <!-- Event Header -->
 <div class="event-header">
   <div class="event-meta">
-    <h2>{{ event.name }}</h2>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <h2>{{ event.name }}</h2>
+      <form method="POST" action="{% url 'owner_toggle_event_status' event.pk %}" style="margin:0;">
+        {% csrf_token %}
+        {% if event.is_active %}
+          <button type="submit" class="badge" style="background:rgba(248,113,113,.15); color:var(--red); border:1px solid rgba(248,113,113,.3); cursor:pointer; font-family:'Inter',sans-serif; transition:transform 0.1s;">
+            <span>❌ Close Event</span>
+          </button>
+        {% else %}
+          <button type="submit" class="badge" style="background:rgba(52,211,153,.15); color:var(--green); border:1px solid rgba(52,211,153,.3); cursor:pointer; font-family:'Inter',sans-serif; transition:transform 0.1s;">
+            <span>🔄 Reopen Event</span>
+          </button>
+        {% endif %}
+      </form>
+    </div>
     <div class="meta-row">
       <span>📅 {{ event.event_date }}</span>
       <span>⏰ {{ event.event_time }}</span>

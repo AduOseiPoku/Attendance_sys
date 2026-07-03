@@ -89,11 +89,15 @@ if DATABASE_URL:
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'attendance_db',
+        'USER': 'attendance_admin',
+        'PASSWORD': 'Prince@2406',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
+}
 
 
 
