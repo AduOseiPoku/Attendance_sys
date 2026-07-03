@@ -153,7 +153,6 @@ if CSRF_TRUSTED_ORIGINS_ENV:
     CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',')]
 else:
     CSRF_TRUSTED_ORIGINS = [
-        'https://*.up.railway.app',
         'http://localhost:8000',
         'http://127.0.0.1:8000',
     ]

@@ -1,0 +1,19 @@
+# Ignore local virtual environment and git history
+.venv
+.git
+.gitignore
+__pycache__
+*.pyc
+db.sqlite3
+
+# Ignore documentation and config files
+*.md
+.env
+.env*
+.DS_Store
+Dockerfile
+.dockerignore
+walkthrough.md
+task.md
+plan.md
+deployment_guide.md

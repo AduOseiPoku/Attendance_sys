@@ -18,8 +18,11 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 
+from django.http import HttpResponse
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('attendance.urls')),
+    path('robots.txt', lambda r: HttpResponse("User-agent: *\nDisallow:", content_type="text/plain")),
 ]
 
