@@ -16,7 +16,7 @@
             <div class="space-y-2">
                 {% for m in members_data %}
                     <label class="flex items-center gap-3 p-2 border rounded-lg">
-                        <input type="radio" name="member_id" value="{{ m.id }}" class="radio">
+                        <input type="radio" name="member_uuid" value="{{ m.uuid }}" class="radio">
                         <div>
                             <div class="font-medium">Profile #{{ forloop.counter }}</div>
                             <div class="text-sm text-slate-600">Phone: {{ m.masked_phone }}</div>
@@ -31,9 +31,9 @@
         <div class="mt-4 space-y-3">
             <div class="text-sm text-slate-600">If none of these look familiar, you can register or quickly check in:</div>
 
-            <a href="{% url 'onboard_member' event.id %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}" class="w-full block text-center bg-amber-500 hover:bg-amber-600 text-white font-medium p-3 rounded-lg transition">No — I'm a visitor / Register</a>
+            <a href="{% url 'attendance:onboard_member' event.uuid %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}" class="w-full block text-center bg-amber-500 hover:bg-amber-600 text-white font-medium p-3 rounded-lg transition">No — I'm a visitor / Register</a>
 
-            <form method="POST" action="{% url 'quick_checkin' event.id %}">
+            <form method="POST" action="{% url 'attendance:quick_checkin' event.uuid %}">
                 {% csrf_token %}
                 <input type="hidden" name="name" value="{{ typed_name }}">
                 <input type="hidden" name="phone" value="{{ typed_phone }}">
@@ -45,12 +45,12 @@
             document.getElementById('pickForm').addEventListener('submit', function(e){
                 e.preventDefault();
                 const form = e.target;
-                const selected = form.member_id.value;
+                const selected = form.member_uuid.value;
                 if(!selected){
                     alert('Please select a profile.');
                     return;
                 }
-                form.action = `/attendance/confirm/{{ event.id }}/${selected}/`;
+                form.action = `/confirm/{{ event.uuid }}/${selected}/`;
                 form.method = 'POST';
                 form.submit();
             });

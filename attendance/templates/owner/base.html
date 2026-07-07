@@ -247,24 +247,24 @@
 
     <nav class="sidebar-nav">
       <span class="nav-section-label">Main</span>
-      <a href="{% url 'owner_dashboard' %}"
+      <a href="{% url 'attendance:owner_dashboard' %}"
          class="nav-link {% if request.resolver_match.url_name == 'owner_dashboard' %}active{% endif %}">
         <span class="nav-icon">📊</span> Dashboard
       </a>
-      <a href="{% url 'owner_members' %}"
+      <a href="{% url 'attendance:owner_members' %}"
          class="nav-link {% if request.resolver_match.url_name == 'owner_members' %}active{% endif %}">
         <span class="nav-icon">👥</span> Members
       </a>
 
       <span class="nav-section-label">Actions</span>
-      <a href="{% url 'owner_create_event' %}"
+      <a href="{% url 'attendance:owner_create_event' %}"
          class="nav-link {% if request.resolver_match.url_name == 'owner_create_event' %}active{% endif %}">
         <span class="nav-icon">➕</span> Create Event
       </a>
     </nav>
 
     <div class="sidebar-footer">
-      <a href="{% url 'owner_logout' %}" class="logout-btn">
+      <a href="{% url 'attendance:owner_logout' %}" class="logout-btn">
         <span>🚪</span> Sign Out
       </a>
     </div>

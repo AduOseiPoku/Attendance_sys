@@ -22,11 +22,11 @@ def owner_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         # Check 1: Must be logged in
         if not request.user.is_authenticated:
-            return redirect("owner_login")
+            return redirect("attendance:owner_login")
 
         # Check 2: Must have a linked ChurchOwner profile
         if not hasattr(request.user, "church_owner"):
-            return redirect("owner_login")
+            return redirect("attendance:owner_login")
 
         return view_func(request, *args, **kwargs)
 

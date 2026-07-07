@@ -27,7 +27,7 @@ class Command(BaseCommand):
         except Event.DoesNotExist:
             raise CommandError(f'Event with id {event_id} not found.')
 
-        path = reverse('scan_landing', args=[event.id])
+        path = reverse('attendance:scan_landing', args=[event.uuid])
         full_url = urljoin(host + '/', path.lstrip('/'))
 
         if not out:

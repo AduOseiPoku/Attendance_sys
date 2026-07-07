@@ -181,8 +181,8 @@
   <div class="section-header">
     <h3>🕐 Recent Events</h3>
     <div style="display:flex;gap:10px;align-items:center;">
-      <a href="{% url 'owner_create_event' %}" class="link-accent" style="font-size:13px;background:rgba(108,99,255,.12);padding:6px 14px;border-radius:8px;">➕ Create Event</a>
-      <a href="{% url 'owner_dashboard' %}" class="link-accent" style="font-size:13px;">View all</a>
+      <a href="{% url 'attendance:owner_create_event' %}" class="link-accent" style="font-size:13px;background:rgba(108,99,255,.12);padding:6px 14px;border-radius:8px;">➕ Create Event</a>
+      <a href="{% url 'attendance:owner_dashboard' %}" class="link-accent" style="font-size:13px;">View all</a>
     </div>
   </div>
 
@@ -214,7 +214,7 @@
           <span class="badge badge-blue">{{ event.attendee_count }}</span>
         </td>
         <td>
-          <a href="{% url 'owner_event_detail' event.pk %}" class="link-accent">View Roster →</a>
+          <a href="{% url 'attendance:owner_event_detail' event.pk %}" class="link-accent">View Roster →</a>
         </td>
       </tr>
       {% endfor %}
@@ -224,7 +224,7 @@
   <div class="empty-state">
     <span class="emoji">📭</span>
     No events have been created yet.<br>
-    <a href="{% url 'owner_create_event' %}" class="link-accent" style="margin-top:12px;display:inline-block;">➕ Create your first event</a>
+    <a href="{% url 'attendance:owner_create_event' %}" class="link-accent" style="margin-top:12px;display:inline-block;">➕ Create your first event</a>
   </div>
   {% endif %}
 </div>

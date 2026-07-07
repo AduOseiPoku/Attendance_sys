@@ -30,9 +30,9 @@ def mask_phone(phone):
     return "*" * (len(phone) - 4) + phone[-4:]
 
 
-def scan_landing(request, event_id):
+def scan_landing(request, event_uuid):
     """Main entry point handling check-ins, exact/partial matches, and naming collisions."""
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, uuid=event_uuid)
     church = event.church
 
     if request.method == "POST":
@@ -87,7 +87,7 @@ def scan_landing(request, event_id):
             else:
                 # DUPLICATE-NAME HANDLING: Multiple members share this identical name
                 members_data = [
-                    {"id": m.id, "masked_phone": mask_phone(m.phone_number)}
+                    {"id": m.id, "uuid": str(m.uuid), "masked_phone": mask_phone(m.phone_number)}
                     for m in name_matches
                 ]
                 return render(request, "attendance/duplicate_names.html", {
@@ -100,14 +100,14 @@ def scan_landing(request, event_id):
 
         # Scenario 3: Complete Stranger -> Route directly to Onboarding
         params = urlencode({"name": name, "phone": phone})
-        return redirect(f"{reverse('onboard_member', args=[event.id])}?{params}")
+        return redirect(f"{reverse('attendance:onboard_member', args=[event.uuid])}?{params}")
 
     return render(request, "attendance/scan_landing.html", {"event": event})
 
 
-def onboard_member(request, event_id):
+def onboard_member(request, event_uuid):
     """Registers a completely new member while enforcing phone normalization."""
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, uuid=event_uuid)
     church = event.church
 
     suggested_name = request.GET.get("name", "")
@@ -158,13 +158,13 @@ def onboard_member(request, event_id):
     })
 
 
-def confirm_identity(request, event_id, member_id):
+def confirm_identity(request, event_uuid, member_uuid):
     """Universal POST-secured view handling confirmation checks across resolve pipelines."""
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
-    event = get_object_or_404(Event, id=event_id)
-    member = get_object_or_404(Member, id=member_id)
+    event = get_object_or_404(Event, uuid=event_uuid)
+    member = get_object_or_404(Member, uuid=member_uuid)
 
     log, created = AttendanceLog.objects.get_or_create(
         member=member, 
@@ -179,9 +179,9 @@ def confirm_identity(request, event_id, member_id):
 
 
 @require_POST
-def quick_checkin(request, event_id):
+def quick_checkin(request, event_uuid):
     """Fast path: create or find a member and record attendance with one click."""
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, uuid=event_uuid)
     church = event.church
     name = request.POST.get("name", "").strip()
     raw_phone = request.POST.get("phone", "").strip()
@@ -213,7 +213,7 @@ def quick_checkin(request, event_id):
 def owner_login(request):
     """Custom login page restricted to ChurchOwner accounts."""
     if request.user.is_authenticated and hasattr(request.user, "church_owner"):
-        return redirect("owner_dashboard")
+        return redirect("attendance:owner_dashboard")
 
     error = None
     if request.method == "POST":
@@ -223,7 +223,7 @@ def owner_login(request):
 
         if user is not None and hasattr(user, "church_owner"):
             login(request, user)
-            return redirect("owner_dashboard")
+            return redirect("attendance:owner_dashboard")
         else:
             error = "Invalid credentials, or this account is not registered as a church owner."
 
@@ -233,7 +233,7 @@ def owner_login(request):
 def owner_logout(request):
     """Logs out the church owner and redirects to login."""
     logout(request)
-    return redirect("owner_login")
+    return redirect("attendance:owner_login")
 
 
 @owner_required
@@ -360,7 +360,7 @@ def owner_toggle_event_status(request, pk):
     event.is_active = not event.is_active
     event.save(update_fields=["is_active"])
     
-    return redirect("owner_event_detail", pk=event.pk)
+    return redirect("attendance:owner_event_detail", pk=event.pk)
 
 
 @owner_required
@@ -421,7 +421,7 @@ def owner_create_event(request):
                 },
             })
 
-        return redirect("owner_dashboard")
+        return redirect("attendance:owner_dashboard")
 
     return render(request, "owner/create_event.html", {"owner": owner})
 
@@ -429,27 +429,27 @@ def owner_create_event(request):
 def global_landing(request):
     """Renders the global entry page for selecting a church and event."""
     churches = Church.objects.all()
-    selected_church_id = request.GET.get("church")
+    selected_church_uuid = request.GET.get("church")
     events = []
     
-    if selected_church_id:
-        church = get_object_or_404(Church, id=selected_church_id)
+    if selected_church_uuid:
+        church = get_object_or_404(Church, uuid=selected_church_uuid)
         events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")[:3]
 
     return render(request, "attendance/global_landing.html", {
         "churches": churches,
-        "selected_church_id": int(selected_church_id) if selected_church_id and selected_church_id.isdigit() else None,
+        "selected_church_uuid": selected_church_uuid,
         "events": events,
     })
 
 
-def get_church_events(request, church_id):
+def get_church_events(request, church_uuid):
     """API endpoint returning events for a specific church as JSON."""
-    church = get_object_or_404(Church, id=church_id)
+    church = get_object_or_404(Church, uuid=church_uuid)
     events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")[:3]
     data = [
-        {"id": event.id, "name": f"{event.name} ({event.event_date})"}
+        {"id": str(event.uuid), "name": f"{event.name} ({event.event_date})"}
         for event in events
     ]
     from django.http import JsonResponse
-    return JsonResponse({"events": data})
+    return JsonResponse({"events": data})

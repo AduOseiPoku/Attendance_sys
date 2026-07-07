@@ -18,7 +18,7 @@
                 <select id="churchSelect" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                     <option value="">-- Choose Church --</option>
                     {% for church in churches %}
-                        <option value="{{ church.id }}" {% if church.id == selected_church_id %}selected{% endif %}>{{ church.name }}</option>
+                        <option value="{{ church.uuid }}" {% if church.uuid == selected_church_uuid %}selected{% endif %}>{{ church.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -28,7 +28,7 @@
                 <select id="eventSelect" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                     <option value="">-- Choose Event --</option>
                     {% for event in events %}
-                        <option value="{{ event.id }}" {% if forloop.first %}selected{% endif %}>{{ event.name }}</option>
+                        <option value="{{ event.uuid }}" {% if forloop.first %}selected{% endif %}>{{ event.name }}</option>
                     {% endfor %}
                 </select>
             </div>

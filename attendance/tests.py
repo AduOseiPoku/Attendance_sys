@@ -189,13 +189,13 @@ class AttendanceSystemViewsTestCase(TestCase):
         )
 
     def test_scan_landing_page_get(self):
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "attendance/scan_landing.html")
 
     def test_exact_match_attendance_logging(self):
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         post_data = {"name": "  kWaMe mEnSaH ", "phone_number": " +233 (241) 234-567 "}
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
@@ -204,21 +204,21 @@ class AttendanceSystemViewsTestCase(TestCase):
 
     def test_already_checked_in_status_message(self):
         AttendanceLog.objects.create(member=self.existing_member, event=self.event)
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         post_data = {"name": "Kwame Mensah", "phone_number": "233241234567"}
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "You have already checked in")
 
     def test_phone_exists_name_mismatch_suggestion(self):
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         post_data = {"name": "Wrong Name", "phone_number": "233241234567"}
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "attendance/name_suggestion.html")
 
     def test_name_exists_phone_mismatch_suggestion(self):
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         post_data = {"name": "Kwame Mensah", "phone_number": "233999999999"}
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
@@ -226,7 +226,7 @@ class AttendanceSystemViewsTestCase(TestCase):
         self.assertIn("masked_phone", response.context)
 
     def test_duplicate_name_collision_handling(self):
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         post_data = {"name": "John Osei", "phone_number": "233000000000"}
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
@@ -234,14 +234,14 @@ class AttendanceSystemViewsTestCase(TestCase):
         self.assertEqual(len(response.context["members_data"]), 2)
 
     def test_unknown_visitor_redirects_to_onboarding(self):
-        url = reverse("scan_landing", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
         post_data = {"name": "New Stranger", "phone_number": "233555555555"}
         response = self.client.post(url, post_data)
-        expected = reverse('onboard_member', kwargs={'event_id': self.event.id}) + "?" + urlencode({'name': 'New Stranger', 'phone': '233555555555'})
+        expected = reverse('attendance:onboard_member', kwargs={'event_uuid': self.event.uuid}) + "?" + urlencode({'name': 'New Stranger', 'phone': '233555555555'})
         self.assertRedirects(response, expected, fetch_redirect_response=False)
 
     def test_onboard_member_submission(self):
-        url = reverse("onboard_member", kwargs={"event_id": self.event.id})
+        url = reverse("attendance:onboard_member", kwargs={"event_uuid": self.event.uuid})
         post_data = {
             "name": "Adu Poku",
             "phone_number": "+233 (50) 111-2222",
@@ -258,7 +258,7 @@ class AttendanceSystemViewsTestCase(TestCase):
         self.assertTrue(AttendanceLog.objects.filter(member=new_member, event=self.event).exists())
 
     def test_secure_identity_confirmation_post_only(self):
-        url = reverse("confirm_identity", kwargs={"event_id": self.event.id, "member_id": self.existing_member.id})
+        url = reverse("attendance:confirm_identity", kwargs={"event_uuid": self.event.uuid, "member_uuid": self.existing_member.uuid})
         get_response = self.client.get(url)
         self.assertEqual(get_response.status_code, 405)
         post_response = self.client.post(url)
@@ -356,20 +356,20 @@ class ChurchOwnerModelTests(TestCase):
 class OwnerRequiredDecoratorTests(TestCase):
 
     def test_unauthenticated_redirects_to_login(self):
-        response = self.client.get(reverse("owner_dashboard"))
-        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+        response = self.client.get(reverse("attendance:owner_dashboard"))
+        self.assertRedirects(response, reverse("attendance:owner_login"), fetch_redirect_response=False)
 
     def test_superuser_without_church_owner_is_redirected(self):
         """A superuser who has no ChurchOwner profile cannot access the dashboard."""
         User.objects.create_superuser("su", "su@test.com", "SuperPass1")
         self.client.login(username="su", password="SuperPass1")
-        response = self.client.get(reverse("owner_dashboard"))
-        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+        response = self.client.get(reverse("attendance:owner_dashboard"))
+        self.assertRedirects(response, reverse("attendance:owner_login"), fetch_redirect_response=False)
 
     def test_owner_can_access_dashboard(self):
         make_owner()
         self.client.login(username="pastor", password="TestPass123")
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertEqual(response.status_code, 200)
 
 
@@ -394,23 +394,23 @@ class OwnerLoginLogoutTests(TestCase):
         self.user, self.owner = make_owner()
 
     def test_login_page_get(self):
-        response = self.client.get(reverse("owner_login"))
+        response = self.client.get(reverse("attendance:owner_login"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "owner/login.html")
 
     def test_already_logged_in_redirects_to_dashboard(self):
         self.client.login(username="pastor", password="TestPass123")
-        response = self.client.get(reverse("owner_login"))
-        self.assertRedirects(response, reverse("owner_dashboard"), fetch_redirect_response=False)
+        response = self.client.get(reverse("attendance:owner_login"))
+        self.assertRedirects(response, reverse("attendance:owner_dashboard"), fetch_redirect_response=False)
 
     def test_valid_login_redirects_to_dashboard(self):
-        response = self.client.post(reverse("owner_login"), {
+        response = self.client.post(reverse("attendance:owner_login"), {
             "username": "pastor", "password": "TestPass123"
         })
-        self.assertRedirects(response, reverse("owner_dashboard"), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse("attendance:owner_dashboard"), fetch_redirect_response=False)
 
     def test_wrong_password_returns_error(self):
-        response = self.client.post(reverse("owner_login"), {
+        response = self.client.post(reverse("attendance:owner_login"), {
             "username": "pastor", "password": "WrongPassword"
         })
         self.assertEqual(response.status_code, 200)
@@ -419,7 +419,7 @@ class OwnerLoginLogoutTests(TestCase):
     def test_superuser_without_church_owner_cannot_login(self):
         """A plain superuser (no ChurchOwner profile) must be rejected."""
         User.objects.create_superuser("su2", "su2@test.com", "SuperPass2")
-        response = self.client.post(reverse("owner_login"), {
+        response = self.client.post(reverse("attendance:owner_login"), {
             "username": "su2", "password": "SuperPass2"
         })
         self.assertEqual(response.status_code, 200)
@@ -427,11 +427,11 @@ class OwnerLoginLogoutTests(TestCase):
 
     def test_logout_clears_session_and_redirects(self):
         self.client.login(username="pastor", password="TestPass123")
-        response = self.client.get(reverse("owner_logout"))
-        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+        response = self.client.get(reverse("attendance:owner_logout"))
+        self.assertRedirects(response, reverse("attendance:owner_login"), fetch_redirect_response=False)
         # After logout, accessing dashboard should redirect to login
-        dashboard = self.client.get(reverse("owner_dashboard"))
-        self.assertRedirects(dashboard, reverse("owner_login"), fetch_redirect_response=False)
+        dashboard = self.client.get(reverse("attendance:owner_dashboard"))
+        self.assertRedirects(dashboard, reverse("attendance:owner_login"), fetch_redirect_response=False)
 
 
 # ---------------------------------------------------------------------------
@@ -465,28 +465,28 @@ class OwnerDashboardViewTests(TestCase):
         AttendanceLog.objects.create(member=self.member1, event=self.event2)
 
     def test_dashboard_returns_200(self):
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertEqual(response.status_code, 200)
 
     def test_stat_cards_correct(self):
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertEqual(response.context["total_members"],  2)
         self.assertEqual(response.context["total_events"],   2)
         self.assertEqual(response.context["total_checkins"], 3)
 
     def test_avg_rate_calculation(self):
         # 3 check-ins out of 2 members × 2 events = 4 possible → 75%
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertEqual(response.context["avg_rate"], 75.0)
 
     def test_avg_rate_zero_when_no_events(self):
         Event.objects.all().delete()
         AttendanceLog.objects.all().delete()
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertEqual(response.context["avg_rate"], 0)
 
     def test_chart_labels_and_data_present(self):
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         import json
         labels = json.loads(response.context["chart_labels"])
         data   = json.loads(response.context["chart_data"])
@@ -494,7 +494,7 @@ class OwnerDashboardViewTests(TestCase):
         self.assertEqual(len(data),   2)
 
     def test_chart_data_ordered_chronologically(self):
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         import json
         data = json.loads(response.context["chart_data"])
         # event1 (7 days ago) had 2 attendees, event2 (today) had 1
@@ -504,7 +504,7 @@ class OwnerDashboardViewTests(TestCase):
     def test_recent_events_limited_to_5(self):
         for i in range(6):
             make_event(f"Extra Service {i}", days_offset=-i - 1)
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertLessEqual(len(list(response.context["recent_events"])), 5)
 
 
@@ -538,38 +538,38 @@ class OwnerMembersViewTests(TestCase):
         AttendanceLog.objects.create(member=self.alice, event=make_event("Second", 1))
 
     def test_members_page_returns_200(self):
-        response = self.client.get(reverse("owner_members"))
+        response = self.client.get(reverse("attendance:owner_members"))
         self.assertEqual(response.status_code, 200)
 
     def test_all_members_shown_by_default(self):
-        response = self.client.get(reverse("owner_members"))
+        response = self.client.get(reverse("attendance:owner_members"))
         self.assertEqual(response.context["members"].count(), 3)
 
     def test_search_by_name(self):
-        response = self.client.get(reverse("owner_members") + "?search=alice")
+        response = self.client.get(reverse("attendance:owner_members") + "?search=alice")
         members = list(response.context["members"])
         self.assertEqual(len(members), 1)
         self.assertEqual(members[0].name, "Alice Mensah")
 
     def test_search_by_phone(self):
-        response = self.client.get(reverse("owner_members") + "?search=444")
+        response = self.client.get(reverse("attendance:owner_members") + "?search=444")
         members = list(response.context["members"])
         self.assertEqual(len(members), 1)
         self.assertEqual(members[0].name, "Bob Asante")
 
     def test_search_no_match_returns_empty(self):
-        response = self.client.get(reverse("owner_members") + "?search=zzz")
+        response = self.client.get(reverse("attendance:owner_members") + "?search=zzz")
         self.assertEqual(response.context["members"].count(), 0)
 
     def test_department_filter(self):
-        response = self.client.get(reverse("owner_members") + "?department=Choir")
+        response = self.client.get(reverse("attendance:owner_members") + "?department=Choir")
         names = [m.name for m in response.context["members"]]
         self.assertIn("Alice Mensah", names)
         self.assertIn("Carol Osei",   names)
         self.assertNotIn("Bob Asante", names)
 
     def test_department_dropdown_contains_distinct_values(self):
-        response = self.client.get(reverse("owner_members"))
+        response = self.client.get(reverse("attendance:owner_members"))
         depts = list(response.context["departments"])
         self.assertIn("Choir",  depts)
         self.assertIn("Ushers", depts)
@@ -577,12 +577,12 @@ class OwnerMembersViewTests(TestCase):
 
     def test_members_sorted_by_attendance_descending(self):
         """Alice has 2 check-ins; Bob and Carol have 0 — Alice should be first."""
-        response = self.client.get(reverse("owner_members"))
+        response = self.client.get(reverse("attendance:owner_members"))
         members = list(response.context["members"])
         self.assertEqual(members[0].name, "Alice Mensah")
 
     def test_combined_search_and_department_filter(self):
-        response = self.client.get(reverse("owner_members") + "?search=carol&department=Choir")
+        response = self.client.get(reverse("attendance:owner_members") + "?search=carol&department=Choir")
         members = list(response.context["members"])
         self.assertEqual(len(members), 1)
         self.assertEqual(members[0].name, "Carol Osei")
@@ -616,48 +616,48 @@ class OwnerEventDetailViewTests(TestCase):
         AttendanceLog.objects.create(member=self.member1, event=self.event)
 
     def test_event_detail_returns_200(self):
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         self.assertEqual(response.status_code, 200)
 
     def test_event_detail_404_for_missing_event(self):
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": 9999}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": 9999}))
         self.assertEqual(response.status_code, 404)
 
     def test_present_count_correct(self):
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         self.assertEqual(response.context["present_count"], 1)
 
     def test_absent_count_correct(self):
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         self.assertEqual(response.context["absent_count"], 1)
 
     def test_present_member_in_correct_list(self):
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         present_names = [m.name for m in response.context["present_members"]]
         self.assertIn("Present Person", present_names)
         self.assertNotIn("Absent Person", present_names)
 
     def test_absent_member_in_correct_list(self):
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         absent_names = [m.name for m in response.context["absent_members"]]
         self.assertIn("Absent Person", absent_names)
         self.assertNotIn("Present Person", absent_names)
 
     def test_attendance_percentage_correct(self):
         # 1 present out of 2 total members = 50%
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         self.assertEqual(response.context["attendance_pct"], 50.0)
 
     def test_attendance_pct_zero_when_no_members(self):
         Member.objects.all().delete()
         AttendanceLog.objects.all().delete()
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
         self.assertEqual(response.context["attendance_pct"], 0)
 
     def test_unauthenticated_redirected_from_event_detail(self):
         self.client.logout()
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": self.event.pk}))
-        self.assertRedirects(response, reverse("owner_login"), fetch_redirect_response=False)
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        self.assertRedirects(response, reverse("attendance:owner_login"), fetch_redirect_response=False)
 
 
 # ---------------------------------------------------------------------------
@@ -755,20 +755,20 @@ class MultiTenancyTests(TestCase):
         self.client.login(username="pastor_a", password="Password123")
 
         # Check dashboard metrics for Church A
-        response = self.client.get(reverse("owner_dashboard"))
+        response = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertEqual(response.context["total_members"], 1)
         self.assertEqual(response.context["total_events"], 1)
 
         # Check members list for Church A
-        response = self.client.get(reverse("owner_members"))
+        response = self.client.get(reverse("attendance:owner_members"))
         members = [m.name for m in response.context["members"]]
         self.assertIn("Member A", members)
         self.assertNotIn("Member B", members)
 
         # Check event detail for Church A event
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": event_a.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": event_a.pk}))
         self.assertEqual(response.status_code, 200)
 
         # Attempting to access Church B event should return 404
-        response = self.client.get(reverse("owner_event_detail", kwargs={"pk": event_b.pk}))
-        self.assertEqual(response.status_code, 404)
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": event_b.pk}))
+        self.assertEqual(response.status_code, 404)

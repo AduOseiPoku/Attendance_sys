@@ -2,16 +2,18 @@
 from django.urls import path
 from . import views
 
+app_name = 'attendance'
+
 urlpatterns = [
     path('', views.global_landing, name='global_landing'),
-    path('api/church-events/<int:church_id>/', views.get_church_events, name='get_church_events'),
+    path('api/church-events/<uuid:church_uuid>/', views.get_church_events, name='get_church_events'),
     # --- Member-facing check-in flows ---
-    path('scan/<int:event_id>/', views.scan_landing, name='scan_landing'),
-    path('onboard/<int:event_id>/', views.onboard_member, name='onboard_member'),
+    path('scan/<uuid:event_uuid>/', views.scan_landing, name='scan_landing'),
+    path('onboard/<uuid:event_uuid>/', views.onboard_member, name='onboard_member'),
 
     # Unified resolution endpoint handling both name and phone suggestion forms securely
-    path('confirm/<int:event_id>/<int:member_id>/', views.confirm_identity, name='confirm_identity'),
-    path('quick_checkin/<int:event_id>/', views.quick_checkin, name='quick_checkin'),
+    path('confirm/<uuid:event_uuid>/<uuid:member_uuid>/', views.confirm_identity, name='confirm_identity'),
+    path('quick-checkin/<uuid:event_uuid>/', views.quick_checkin, name='quick_checkin'),
 
     # --- Church Owner Dashboard ---
     path('owner/login/',              views.owner_login,         name='owner_login'),

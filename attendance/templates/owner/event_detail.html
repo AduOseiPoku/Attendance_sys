@@ -171,14 +171,14 @@
 
 {% block content %}
 
-<a href="{% url 'owner_dashboard' %}" class="back-link">← Back to Dashboard</a>
+<a href="{% url 'attendance:owner_dashboard' %}" class="back-link">← Back to Dashboard</a>
 
 <!-- Event Header -->
 <div class="event-header">
   <div class="event-meta">
     <div style="display:flex; align-items:center; gap:16px;">
       <h2>{{ event.name }}</h2>
-      <form method="POST" action="{% url 'owner_toggle_event_status' event.pk %}" style="margin:0;">
+      <form method="POST" action="{% url 'attendance:owner_toggle_event_status' event.pk %}" style="margin:0;">
         {% csrf_token %}
         {% if event.is_active %}
           <button type="submit" class="badge" style="background:rgba(248,113,113,.15); color:var(--red); border:1px solid rgba(248,113,113,.3); cursor:pointer; font-family:'Inter',sans-serif; transition:transform 0.1s;">

@@ -187,7 +187,7 @@
     <button type="submit" class="filter-submit">Filter</button>
 
     {% if search or department %}
-    <a href="{% url 'owner_members' %}" class="clear-btn">✕ Clear</a>
+    <a href="{% url 'attendance:owner_members' %}" class="clear-btn">✕ Clear</a>
     {% endif %}
   </div>
 </form>

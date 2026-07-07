@@ -1,10 +1,16 @@
 # attendance/models.py
 
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
 
 class Church(models.Model):
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False
+    )
     name = models.CharField(
         max_length=200,
         unique=True
@@ -22,6 +28,11 @@ class Church(models.Model):
 
 
 class Member(models.Model):
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False
+    )
     church = models.ForeignKey(
         Church,
         on_delete=models.CASCADE,
@@ -79,6 +90,11 @@ class Member(models.Model):
 
 
 class Event(models.Model):
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False
+    )
     church = models.ForeignKey(
         Church,
         on_delete=models.CASCADE,
