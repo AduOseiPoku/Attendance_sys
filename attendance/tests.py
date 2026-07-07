@@ -772,3 +772,67 @@ class MultiTenancyTests(TestCase):
         # Attempting to access Church B event should return 404
         response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": event_b.pk}))
         self.assertEqual(response.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# User Flow Modification Tests
+# ---------------------------------------------------------------------------
+NEW_FLOW_TEMPLATES = {
+    "attendance/global_landing.html": "<html>global landing: {% for church in churches %}{{ church.name }}{% endfor %}</html>",
+    "attendance/church_events.html": "<html>church events: {{ church.name }} {% for event in events %}{{ event.name }}{% endfor %}</html>",
+}
+
+@override_settings(
+    TEMPLATES=[
+        {
+            "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "DIRS": [],
+            "APP_DIRS": False,
+            "OPTIONS": {
+                "loaders": [("django.template.loaders.locmem.Loader", NEW_FLOW_TEMPLATES)],
+                "context_processors": [
+                    "django.template.context_processors.request",
+                    "django.contrib.auth.context_processors.auth",
+                    "django.contrib.messages.context_processors.messages",
+                ],
+            },
+        }
+    ]
+)
+class UserFlowModificationTests(TestCase):
+    def setUp(self):
+        self.church = Church.objects.create(name="Grace Chapel")
+        self.event_active = Event.objects.create(
+            church=self.church,
+            name="Sunday Celebration",
+            event_date=date.today(),
+            event_time=time(9, 0),
+            is_active=True
+        )
+        self.event_inactive = Event.objects.create(
+            church=self.church,
+            name="Past Service",
+            event_date=date.today(),
+            event_time=time(8, 0),
+            is_active=False
+        )
+
+    def test_global_landing_page_lists_churches(self):
+        response = self.client.get(reverse("attendance:global_landing"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "attendance/global_landing.html")
+        self.assertContains(response, "Grace Chapel")
+
+    def test_church_events_page_shows_active_events_only(self):
+        response = self.client.get(reverse("attendance:church_events", kwargs={"church_uuid": self.church.uuid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "attendance/church_events.html")
+        self.assertContains(response, "Grace Chapel")
+        self.assertContains(response, "Sunday Celebration")
+        self.assertNotContains(response, "Past Service")
+
+    def test_church_events_page_returns_404_for_invalid_uuid(self):
+        import uuid
+        random_uuid = uuid.uuid4()
+        response = self.client.get(reverse("attendance:church_events", kwargs={"church_uuid": random_uuid}))
+        self.assertEqual(response.status_code, 404)

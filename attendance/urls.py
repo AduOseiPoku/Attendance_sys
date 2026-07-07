@@ -6,6 +6,7 @@ app_name = 'attendance'
 
 urlpatterns = [
     path('', views.global_landing, name='global_landing'),
+    path('church/<uuid:church_uuid>/', views.church_events, name='church_events'),
     path('api/church-events/<uuid:church_uuid>/', views.get_church_events, name='get_church_events'),
     # --- Member-facing check-in flows ---
     path('scan/<uuid:event_uuid>/', views.scan_landing, name='scan_landing'),

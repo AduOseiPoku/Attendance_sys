@@ -427,18 +427,19 @@ def owner_create_event(request):
 
 
 def global_landing(request):
-    """Renders the global entry page for selecting a church and event."""
+    """Renders the global entry page for selecting a church."""
     churches = Church.objects.all()
-    selected_church_uuid = request.GET.get("church")
-    events = []
-    
-    if selected_church_uuid:
-        church = get_object_or_404(Church, uuid=selected_church_uuid)
-        events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")[:3]
-
     return render(request, "attendance/global_landing.html", {
         "churches": churches,
-        "selected_church_uuid": selected_church_uuid,
+    })
+
+
+def church_events(request, church_uuid):
+    """Renders a dedicated page displaying active events for the selected church."""
+    church = get_object_or_404(Church, uuid=church_uuid)
+    events = Event.objects.filter(church=church, is_active=True).order_by("-event_date", "-event_time")
+    return render(request, "attendance/church_events.html", {
+        "church": church,
         "events": events,
     })
 

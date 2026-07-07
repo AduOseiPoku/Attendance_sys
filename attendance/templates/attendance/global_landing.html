@@ -5,101 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Your Church</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
 </head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full text-center">
-        <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl">⛪</div>
-        <h2 class="text-2xl font-bold text-slate-800">Welcome</h2>
-        <p class="text-slate-500 mt-1">Please select your church to log attendance</p>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center min-h-screen p-6">
+    <!-- Main Card -->
+    <div class="bg-white/80 backdrop-blur-md p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100 max-w-md w-full text-center transition-all duration-300 hover:shadow-2xl">
+        <!-- Icon Badge -->
+        <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100/50 text-3xl">
+            ⛪
+        </div>
+        
+        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Welcome</h1>
+        <p class="text-slate-500 mt-2 text-sm md:text-base leading-relaxed">
+            Select your church to locate active check-in events
+        </p>
 
-        <div class="mt-6 text-left space-y-4">
+        <div class="mt-8 text-left space-y-6">
+            <!-- Selector Container -->
             <div>
-                <label for="churchSelect" class="block text-sm font-medium text-slate-600">Select Church</label>
-                <select id="churchSelect" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-                    <option value="">-- Choose Church --</option>
-                    {% for church in churches %}
-                        <option value="{{ church.uuid }}" {% if church.uuid == selected_church_uuid %}selected{% endif %}>{{ church.name }}</option>
-                    {% endfor %}
-                </select>
+                <label for="churchSelect" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Select Church
+                </label>
+                <div class="relative">
+                    <select id="churchSelect" class="w-full p-4 pr-10 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-sm transition appearance-none text-slate-700 font-medium">
+                        <option value="">-- Choose Church --</option>
+                        {% for church in churches %}
+                            <option value="{{ church.uuid }}">{{ church.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <!-- Custom Arrow Icon -->
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                        </svg>
+                    </div>
+                </div>
             </div>
 
-            <div id="eventSection" class="{% if not events %}hidden{% endif %}">
-                <label for="eventSelect" class="block text-sm font-medium text-slate-600">Select Event</label>
-                <select id="eventSelect" class="w-full mt-2 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-                    <option value="">-- Choose Event --</option>
-                    {% for event in events %}
-                        <option value="{{ event.uuid }}" {% if forloop.first %}selected{% endif %}>{{ event.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <button id="proceedBtn" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition {% if not events %}opacity-50 cursor-not-allowed{% endif %}" {% if not events %}disabled{% endif %}>
-                Proceed to Check-In
+            <!-- Proceed Button -->
+            <button id="proceedBtn" class="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-emerald-600/20 hover:shadow-emerald-700/30 transition-all duration-200 opacity-50 cursor-not-allowed" disabled>
+                Find Active Events
             </button>
         </div>
     </div>
 
     <script>
         const churchSelect = document.getElementById('churchSelect');
-        const eventSelect = document.getElementById('eventSelect');
-        const eventSection = document.getElementById('eventSection');
         const proceedBtn = document.getElementById('proceedBtn');
 
-        function updateEventOptions(events) {
-            eventSelect.innerHTML = '<option value="">-- Choose Event --</option>';
-            events.forEach(event => {
-                const opt = document.createElement('option');
-                opt.value = event.id;
-                opt.textContent = event.name;
-                eventSelect.appendChild(opt);
-            });
-            if (events.length > 0) {
-                eventSection.classList.remove('hidden');
-                // Auto-select the first (newest) event
-                eventSelect.selectedIndex = 1;
-                proceedBtn.disabled = false;
-                proceedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            } else {
-                eventSection.classList.add('hidden');
-                proceedBtn.disabled = true;
-                proceedBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                alert('No active events found for this church.');
-            }
-        }
-
+        // Monitor select changes to toggle button state
         churchSelect.addEventListener('change', function() {
-            const churchId = this.value;
-            if (!churchId) {
-                eventSection.classList.add('hidden');
-                proceedBtn.disabled = true;
-                proceedBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                return;
-            }
-
-            fetch(`/api/church-events/${churchId}/`)
-                .then(res => res.json())
-                .then(data => {
-                    updateEventOptions(data.events || []);
-                })
-                .catch(err => {
-                    console.error('Error fetching events:', err);
-                });
-        });
-
-        eventSelect.addEventListener('change', function() {
-            if (this.value) {
-                proceedBtn.disabled = false;
+            const hasSelection = !!this.value;
+            proceedBtn.disabled = !hasSelection;
+            if (hasSelection) {
                 proceedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             } else {
-                proceedBtn.disabled = true;
                 proceedBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
         });
 
+        // Redirect on click
         proceedBtn.addEventListener('click', function() {
-            const eventId = eventSelect.value;
-            if (eventId) {
-                window.location.href = `/scan/${eventId}/`;
+            const churchId = churchSelect.value;
+            if (churchId) {
+                window.location.href = `/church/${churchId}/`;
             }
         });
     </script>
