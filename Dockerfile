@@ -23,11 +23,13 @@ RUN pip install --upgrade pip \
 # Copy project files
 COPY . /app/
 
-# Create a non-root user for security with a real home directory
+# Create a non-root user for security
 RUN addgroup --system appgroup \
-    && adduser --system --ingroup appgroup --home /home/appuser --create-home appuser \
+    && adduser --system --ingroup appgroup appuser \
     && chown -R appuser:appgroup /app
-ENV HOME=/home/appuser
+
+# Point the home environment variable to /tmp so tools don't try to use /nonexistent
+ENV HOME=/tmp
 USER appuser
 
 # Expose port
