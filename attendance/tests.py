@@ -971,3 +971,188 @@ class OwnerEditEventViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "errors")
         self.assertContains(response, "Event name is required.")
+
+
+from django.contrib.auth.models import User
+from django.core.management import call_command
+from datetime import timedelta
+from .models import GraduationYear
+
+
+class StudentChurchTests(TestCase):
+    def setUp(self):
+        # 1. Create a student church
+        self.church = Church.objects.create(
+            name="Campus Fellowship",
+            is_student_church=True
+        )
+        
+        # 2. Create graduation cohorts
+        self.cohort_past = GraduationYear.objects.create(
+            church=self.church,
+            year="Year 2",
+            completion_date=date.today() - timedelta(days=1)
+        )
+        self.cohort_future = GraduationYear.objects.create(
+            church=self.church,
+            year="Year 4",
+            completion_date=date.today() + timedelta(days=305)
+        )
+        
+        # 3. Create members
+        self.member_graduated = Member.objects.create(
+            church=self.church,
+            name="Alumni Student",
+            phone_number="233240000001",
+            graduation_year=self.cohort_past,
+            is_active=True
+        )
+        self.member_current = Member.objects.create(
+            church=self.church,
+            name="Current Student",
+            phone_number="233240000002",
+            graduation_year=self.cohort_future,
+            is_active=True
+        )
+        
+        # 4. Create an event
+        self.event = Event.objects.create(
+            church=self.church,
+            name="Friday Service",
+            event_date=date.today(),
+            event_time=time(18, 30),
+            is_active=True
+        )
+        
+        # 5. Create owner for views testing
+        self.user = User.objects.create_user(username="fellowship_pastor", password="Password123")
+        self.owner = ChurchOwner.objects.create(user=self.user, church=self.church)
+
+    def test_archive_completed_students_command(self):
+        # Verify initial states
+        self.assertTrue(self.member_graduated.is_active)
+        self.assertTrue(self.member_current.is_active)
+        
+        # Run archiving command
+        call_command("archive_completed_students")
+        
+        self.member_graduated.refresh_from_db()
+        self.member_current.refresh_from_db()
+        
+        # Graduated member should be soft-deleted (is_active=False)
+        self.assertFalse(self.member_graduated.is_active)
+        # Current member should remain active
+        self.assertTrue(self.member_current.is_active)
+
+    def test_inactive_student_can_checkin_without_reactivation(self):
+        # Soft-delete the graduated member
+        self.member_graduated.is_active = False
+        self.member_graduated.save()
+        
+        # Submit check-in POST
+        url = reverse("attendance:scan_landing", kwargs={"event_uuid": self.event.uuid})
+        response = self.client.post(url, {
+            "name": self.member_graduated.name,
+            "phone_number": self.member_graduated.phone_number
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Welcome back")
+        
+        # Verify check-in is logged
+        self.assertTrue(AttendanceLog.objects.filter(member=self.member_graduated, event=self.event).exists())
+        
+        # Verify member remains inactive (not reactivated)
+        self.member_graduated.refresh_from_db()
+        self.assertFalse(self.member_graduated.is_active)
+
+    def test_onboarding_saves_graduation_cohort(self):
+        # Post onboarding form for new student
+        url = reverse("attendance:onboard_member", kwargs={"event_uuid": self.event.uuid})
+        post_data = {
+            "name": "Fresh Student",
+            "phone_number": "233240000003",
+            "graduation_year": self.cohort_future.id,
+            "address": "Dorm 4",
+            "department": "Ushers"
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registration successful")
+        
+        # Verify member created with graduation cohort
+        new_member = Member.objects.get(phone_number="233240000003")
+        self.assertEqual(new_member.graduation_year, self.cohort_future)
+
+    def test_owner_manage_cohorts_views(self):
+        self.client.login(username="fellowship_pastor", password="Password123")
+        
+        # Get cohorts list
+        url_list = reverse("attendance:owner_graduation_years")
+        response = self.client.get(url_list)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Year 2")
+        self.assertContains(response, "Year 4")
+        
+        # Create a new cohort
+        post_data = {
+            "year": "Postgrad",
+            "completion_date": "2028-06-30"
+        }
+        response = self.client.post(url_list, post_data)
+        self.assertRedirects(response, url_list)
+        self.assertTrue(GraduationYear.objects.filter(church=self.church, year="Postgrad").exists())
+        
+        # Delete cohort
+        new_cohort = GraduationYear.objects.get(church=self.church, year="Postgrad")
+        url_delete = reverse("attendance:owner_delete_graduation_year", kwargs={"year_id": new_cohort.id})
+        response = self.client.post(url_delete)
+        self.assertRedirects(response, url_list)
+        self.assertFalse(GraduationYear.objects.filter(church=self.church, year="Postgrad").exists())
+
+    def test_owner_edit_graduation_cohort(self):
+        self.client.login(username="fellowship_pastor", password="Password123")
+
+        # Get edit page
+        url_edit = reverse("attendance:owner_edit_graduation_year", kwargs={"year_id": self.cohort_future.id})
+        response = self.client.get(url_edit)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Year 4")
+
+        # Post edit data
+        post_data = {
+            "year": "Year 4 Advanced",
+            "completion_date": "2027-08-15"
+        }
+        response = self.client.post(url_edit, post_data)
+        self.assertRedirects(response, reverse("attendance:owner_graduation_years"))
+
+        # Verify database update
+        self.cohort_future.refresh_from_db()
+        self.assertEqual(self.cohort_future.year, "Year 4 Advanced")
+        self.assertEqual(self.cohort_future.completion_date.strftime("%Y-%m-%d"), "2027-08-15")
+
+    def test_owner_edit_graduation_cohort_isolation(self):
+        # Create another pastor and church
+        other_church = Church.objects.create(name="Other Church", is_student_church=True)
+        other_user = User.objects.create_user(username="other_pastor", password="Password123")
+        other_owner = ChurchOwner.objects.create(user=other_user, church=other_church)
+
+        # Other pastor logins
+        self.client.login(username="other_pastor", password="Password123")
+
+        # Tries to edit Fellowship Pastor's cohort
+        url_edit = reverse("attendance:owner_edit_graduation_year", kwargs={"year_id": self.cohort_future.id})
+        response = self.client.get(url_edit)
+        self.assertEqual(response.status_code, 404)
+
+        post_data = {
+            "year": "Hacked Label",
+            "completion_date": "2030-01-01"
+        }
+        response = self.client.post(url_edit, post_data)
+        self.assertEqual(response.status_code, 404)
+
+        # Verify no database modification
+        self.cohort_future.refresh_from_db()
+        self.assertEqual(self.cohort_future.year, "Year 4")

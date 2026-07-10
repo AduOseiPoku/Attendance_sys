@@ -18,6 +18,10 @@ class Church(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+    is_student_church = models.BooleanField(
+        default=False,
+        help_text="Designates whether this church is a student fellowship/church."
+    )
 
     class Meta:
         ordering = ["name"]
@@ -25,6 +29,33 @@ class Church(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class GraduationYear(models.Model):
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="graduation_years"
+    )
+    year = models.CharField(
+        max_length=100,
+        help_text="e.g., Year 1, Year 2, Class of 2028"
+    )
+    completion_date = models.DateField(
+        help_text="The date when members of this class complete school."
+    )
+
+    class Meta:
+        ordering = ["completion_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["church", "year"],
+                name="unique_church_graduation_year"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.year} (Ends: {self.completion_date})"
 
 
 class Member(models.Model):
@@ -39,6 +70,14 @@ class Member(models.Model):
         related_name="members",
         null=True,
         blank=True
+    )
+    graduation_year = models.ForeignKey(
+        GraduationYear,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="members",
+        help_text="The student's graduation cohort."
     )
 
     # Optimized for name lookups

@@ -184,6 +184,18 @@
       {% endfor %}
     </select>
 
+    <!-- Graduation Year Dropdown -->
+    {% if owner.church.is_student_church %}
+    <select name="graduation_year" class="dept-select" id="grad-year-filter">
+      <option value="">All Classes</option>
+      {% for cohort in graduation_years %}
+        <option value="{{ cohort.id }}" {% if cohort.id|slugify == graduation_year_id|slugify %}selected{% endif %}>
+          {{ cohort.year }}
+        </option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
     <button type="submit" class="filter-submit">Filter</button>
 
     {% if search or department %}
@@ -205,6 +217,9 @@
       <tr>
         <th>Name</th>
         <th>Phone</th>
+        {% if owner.church.is_student_church %}
+        <th>Graduation Class</th>
+        {% endif %}
         <th>Department</th>
         <th>Check-ins</th>
         <th>Registered On</th>
@@ -216,6 +231,15 @@
       <tr>
         <td class="member-name">{{ member.name }}</td>
         <td style="color:var(--muted); font-size:13px;">{{ member.phone_number }}</td>
+        {% if owner.church.is_student_church %}
+        <td>
+          {% if member.graduation_year %}
+            <span class="badge badge-blue">{{ member.graduation_year.year }}</span>
+          {% else %}
+            <span style="color:var(--border); font-size:12px;">—</span>
+          {% endif %}
+        </td>
+        {% endif %}
         <td>
           {% if member.department %}
             <span class="badge" style="background:rgba(255,255,255,.05); color:var(--muted);">{{ member.department }}</span>
@@ -235,7 +259,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="6" style="text-align:center; padding: 40px; color:var(--muted);">
+        <td colspan="{% if owner.church.is_student_church %}7{% else %}6{% endif %}" style="text-align:center; padding: 40px; color:var(--muted);">
           No members found matching your criteria.
         </td>
       </tr>

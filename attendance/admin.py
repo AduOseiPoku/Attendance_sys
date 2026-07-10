@@ -1,19 +1,28 @@
 from django.contrib import admin
-from .models import Member, Event, AttendanceLog, ChurchOwner, Church
+from .models import Member, Event, AttendanceLog, ChurchOwner, Church, GraduationYear
 
 
 @admin.register(Church)
 class ChurchAdmin(admin.ModelAdmin):
-    list_display = ("name", "created_at")
+    list_display = ("name", "is_student_church", "created_at")
+    list_editable = ("is_student_church",)
     search_fields = ("name",)
     readonly_fields = ("created_at",)
 
 
+@admin.register(GraduationYear)
+class GraduationYearAdmin(admin.ModelAdmin):
+    list_display = ("year", "completion_date", "church")
+    list_filter = ("church",)
+    search_fields = ("year",)
+    ordering = ("year",)
+
+
 @admin.register(Member)
 class MemberAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone_number", "church", "department", "created_at")
+    list_display = ("name", "phone_number", "church", "graduation_year", "department", "created_at")
     search_fields = ("name", "phone_number")
-    list_filter = ("church", "department")
+    list_filter = ("church", "graduation_year", "department")
     ordering = ("name",)
     readonly_fields = ("created_at", "updated_at")
 
