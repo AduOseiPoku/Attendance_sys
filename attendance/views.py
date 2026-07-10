@@ -2,6 +2,7 @@
 import re
 import csv
 import json
+import logging
 from datetime import date as dt_date, time as dt_time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
@@ -16,6 +17,8 @@ from django.core.paginator import Paginator
 from django_ratelimit.decorators import ratelimit
 from .models import Member, Event, AttendanceLog, ChurchOwner, Church, GraduationYear
 from .decorators import owner_required
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_phone(phone):
@@ -64,12 +67,14 @@ def scan_landing(request, event_uuid):
                     defaults={"church": church}
                 )
                 status_msg = "Attendance recorded." if created else "You have already checked in for this event."
+                logger.info(f"Check-in: '{member.name}' (ID:{member.id}) for event '{event.name}' — {status_msg}")
                 return render(request, "attendance/success.html", {
                     "message": f"Welcome back, {member.name}! {status_msg}",
                     "event": event,
                 })
 
             # Case B: Phone exists but user typed a different name
+            logger.warning(f"Name mismatch on check-in for event '{event.name}': typed '{name}', registered as '{member.name}' (phone: ...{member.phone_number[-4:]})")
             return render(request, "attendance/name_suggestion.html", {
                 "member": member,
                 "event": event,
@@ -160,12 +165,18 @@ def onboard_member(request, event_uuid):
             )
             status_msg = "Attendance recorded." if log_created else "You have already checked in for this event."
 
+            if created:
+                logger.info(f"Onboard: New member '{name}' registered for event '{event.name}' (church: '{church}').")
+            else:
+                logger.info(f"Onboard: Returning member '{member.name}' checked in for event '{event.name}'.")
+
             return render(request, "attendance/success.html", {
                 "message": f"Registration successful! Welcome to {event.name}. {status_msg}",
                 "event": event,
             })
 
         except IntegrityError:
+            logger.warning(f"Onboard: Duplicate phone '{phone_number}' attempted for event '{event.name}'.")
             return render(request, "attendance/onboard.html", {
                 "event": event,
                 "suggested_name": name,
@@ -196,6 +207,7 @@ def confirm_identity(request, event_uuid, member_uuid):
         defaults={"church": event.church}
     )
     status_msg = "Attendance recorded." if created else "You have already checked in for this event."
+    logger.info(f"Identity confirmed: '{member.name}' checked in for event '{event.name}' — {status_msg}")
 
     return render(request, "attendance/success.html", {
         "message": f"Welcome back, {member.name}! {status_msg}",
@@ -228,6 +240,7 @@ def quick_checkin(request, event_uuid):
         defaults={"church": church}
     )
     status_msg = "Attendance recorded." if log_created else "You have already checked in for this event."
+    logger.info(f"Quick check-in: '{member.name}' for event '{event.name}' — {status_msg}")
 
     return render(request, "attendance/success.html", {"message": f"Welcome, {member.name}! {status_msg}", "event": event})
 
@@ -249,8 +262,10 @@ def owner_login(request):
 
         if user is not None and hasattr(user, "church_owner"):
             login(request, user)
+            logger.info(f"Owner login: '{username}' signed in successfully.")
             return redirect("attendance:owner_dashboard")
         else:
+            logger.warning(f"Failed owner login attempt for username: '{username}'.")
             error = "Invalid credentials, or this account is not registered as a church owner."
 
     return render(request, "owner/login.html", {"error": error})
@@ -259,6 +274,7 @@ def owner_login(request):
 @require_POST
 def owner_logout(request):
     """Logs out the church owner and redirects to login (POST only to prevent CSRF forced-logout)."""
+    logger.info(f"Owner logout: '{request.user.username}' session ended.")
     logout(request)
     return redirect("attendance:owner_login")
 
@@ -423,7 +439,9 @@ def owner_toggle_event_status(request, event_uuid):
     
     event.is_active = not event.is_active
     event.save(update_fields=["is_active"])
-    
+    status_label = "opened" if event.is_active else "closed"
+    logger.info(f"Event '{event.name}' {status_label} by owner '{request.user.username}'.")
+
     return redirect("attendance:owner_event_detail", event_uuid=event.uuid)
 
 
@@ -568,7 +586,9 @@ def owner_create_event(request):
                 event_time=parsed_time,
                 is_active=is_active,
             )
+            logger.info(f"Event created: '{name}' on {parsed_date} by owner '{request.user.username}' (church: '{church}').")
         except Exception as e:
+            logger.exception(f"Failed to create event '{name}' for church '{church}': {e}")
             return render(request, "owner/create_event.html", {
                 "owner": owner,
                 "errors": [f"Could not create event: {e}"],
@@ -710,7 +730,9 @@ def owner_edit_member(request, member_uuid):
             member.department            = department or None
             member.graduation_year       = graduation_year
             member.save()
+            logger.info(f"Member updated: '{name}' (ID:{member.id}) by owner '{request.user.username}'.")
         except Exception as e:
+            logger.exception(f"Failed to update member '{name}' (ID:{member.id}): {e}")
             return render(request, "owner/edit_member.html", {
                 "owner": owner, "member": member,
                 "graduation_years": graduation_years,
@@ -740,6 +762,7 @@ def owner_deactivate_member(request, member_uuid):
     member = get_object_or_404(Member, uuid=member_uuid, church=owner.church)
     member.is_active = False
     member.save(update_fields=["is_active"])
+    logger.info(f"Member deactivated: '{member.name}' (ID:{member.id}) by owner '{request.user.username}'.")
     return redirect("attendance:owner_members")
 
 
@@ -771,8 +794,10 @@ def owner_graduation_years(request):
                         year=year_str,
                         completion_date=completion_date_str
                     )
+                    logger.info(f"Cohort created: '{year_str}' (completion: {completion_date_str}) for church '{church}' by owner '{request.user.username}'.")
                     return redirect("attendance:owner_graduation_years")
             except Exception as e:
+                logger.exception(f"Failed to create cohort '{year_str}' for church '{church}': {e}")
                 errors.append(f"Error saving graduation year: {e}")
 
     # Fetch active cohorts with annotate count of active students ordered by completion date
@@ -798,8 +823,10 @@ def owner_delete_graduation_year(request, year_id):
     
     # Ensure this cohort belongs to this church
     cohort = get_object_or_404(GraduationYear, id=year_id, church=church)
+    cohort_label = cohort.year
     cohort.delete()
-    
+    logger.warning(f"Cohort deleted: '{cohort_label}' from church '{church}' by owner '{request.user.username}'.")
+
     return redirect("attendance:owner_graduation_years")
 
 
@@ -827,11 +854,14 @@ def owner_edit_graduation_year(request, year_id):
                 if church.graduation_years.filter(year__iexact=year_str).exclude(id=year_id).exists():
                     errors.append(f"Graduation cohort '{year_str}' is already registered.")
                 else:
+                    old_label = cohort.year
                     cohort.year = year_str
                     cohort.completion_date = completion_date_str
                     cohort.save()
+                    logger.info(f"Cohort updated: '{old_label}' → '{year_str}' (completion: {completion_date_str}) by owner '{request.user.username}'.")
                     return redirect("attendance:owner_graduation_years")
             except Exception as e:
+                logger.exception(f"Failed to update cohort (ID:{year_id}): {e}")
                 errors.append(f"Error updating graduation cohort: {e}")
 
     form_data = {

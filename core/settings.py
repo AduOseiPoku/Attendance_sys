@@ -189,3 +189,41 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_X_FORWARDED_HOST = True
     USE_X_FORWARDED_PORT = True
+
+
+# ---------------------------------------------------------------------------
+# Logging — writes structured logs to stdout.
+# Dokploy captures stdout from Docker containers automatically.
+# View logs in: Dokploy Dashboard → App → Logs tab.
+# ---------------------------------------------------------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'app': {
+            'format': '[{levelname}] {asctime} | {name} | {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'app',
+        },
+    },
+    'loggers': {
+        # Django internal warnings and errors
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # All custom app logs (INFO and above)
+        'attendance': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
