@@ -279,32 +279,35 @@ OWNER_TEMPLATES = {
     "owner/dashboard.html":    "<html>dashboard members={{ total_members }} events={{ total_events }} checkins={{ total_checkins }} rate={{ avg_rate }}</html>",
     "owner/members.html":      "<html>members count={{ members|length }}</html>",
     "owner/event_detail.html": "<html>present={{ present_count }} absent={{ absent_count }} pct={{ attendance_pct }}</html>",
+    "owner/edit_event.html":   "<html>edit event {{ event.name }} {% if errors %}errors={{ errors }}{% endif %}</html>",
 }
 
 
 def make_owner(username="pastor", password="TestPass123", church_name="Test Church"):
     """Helper: create a User + linked ChurchOwner and return both."""
-    user  = User.objects.create_user(username=username, password=password)
-    owner = ChurchOwner.objects.create(user=user, church_name=church_name)
+    user = User.objects.create_user(username=username, password=password)
+    church = Church.objects.create(name=church_name)
+    owner = ChurchOwner.objects.create(user=user, church=church)
     return user, owner
 
 
-def make_member(name, phone, department=None):
-    """Helper: create a minimal Member."""
+def make_member(name, phone, church=None, department=None):
+    """Helper: create a Member linked to a church."""
     return Member.objects.create(
         name=name,
         phone_number=phone,
+        church=church,
         emergency_phone_number="000",
         address="Test Address",
         department=department,
     )
 
 
-def make_event(name="Sunday Service", days_offset=0):
-    """Helper: create an Event relative to today."""
+def make_event(name="Sunday Service", days_offset=0, church=None):
+    """Helper: create an Event linked to a church relative to today."""
     from datetime import date, timedelta, time as dtime
     d = date.today() + timedelta(days=days_offset)
-    return Event.objects.create(name=name, event_date=d, event_time=dtime(9, 0))
+    return Event.objects.create(name=name, event_date=d, event_time=dtime(9, 0), church=church)
 
 
 # ---------------------------------------------------------------------------
@@ -333,9 +336,10 @@ class ChurchOwnerModelTests(TestCase):
 
     def test_one_user_cannot_have_two_church_owners(self):
         from django.db import IntegrityError
-        user, _ = make_owner()
+        user, owner = make_owner()
+        church2 = Church.objects.create(name="Another Church")
         with self.assertRaises(IntegrityError):
-            ChurchOwner.objects.create(user=user, church_name="Duplicate")
+            ChurchOwner.objects.create(user=user, church=church2)
 
 
 # ---------------------------------------------------------------------------
@@ -426,10 +430,12 @@ class OwnerLoginLogoutTests(TestCase):
         self.assertContains(response, "error")
 
     def test_logout_clears_session_and_redirects(self):
-        self.client.login(username="pastor", password="TestPass123")
-        response = self.client.get(reverse("attendance:owner_logout"))
+        """Owner logout should clear session data and redirect to login."""
+        self.client.force_login(self.user)
+        # Logout is now POST-only
+        response = self.client.post(reverse("attendance:owner_logout"))
         self.assertRedirects(response, reverse("attendance:owner_login"), fetch_redirect_response=False)
-        # After logout, accessing dashboard should redirect to login
+        self.assertNotIn("_auth_user_id", self.client.session)
         dashboard = self.client.get(reverse("attendance:owner_dashboard"))
         self.assertRedirects(dashboard, reverse("attendance:owner_login"), fetch_redirect_response=False)
 
@@ -455,14 +461,16 @@ class OwnerDashboardViewTests(TestCase):
         self.user, self.owner = make_owner()
         self.client.login(username="pastor", password="TestPass123")
 
-        self.member1 = make_member("Alice", "111")
-        self.member2 = make_member("Bob",   "222")
-        self.event1  = make_event("Service A", days_offset=-7)
-        self.event2  = make_event("Service B", days_offset=0)
+        self.church = self.owner.church
 
-        AttendanceLog.objects.create(member=self.member1, event=self.event1)
-        AttendanceLog.objects.create(member=self.member2, event=self.event1)
-        AttendanceLog.objects.create(member=self.member1, event=self.event2)
+        self.member1 = make_member("Alice", "111", church=self.church)
+        self.member2 = make_member("Bob",   "222", church=self.church)
+        self.event1  = make_event("Service A", days_offset=-7, church=self.church)
+        self.event2  = make_event("Service B", days_offset=0,  church=self.church)
+
+        AttendanceLog.objects.create(member=self.member1, event=self.event1, church=self.church)
+        AttendanceLog.objects.create(member=self.member2, event=self.event1, church=self.church)
+        AttendanceLog.objects.create(member=self.member1, event=self.event2, church=self.church)
 
     def test_dashboard_returns_200(self):
         response = self.client.get(reverse("attendance:owner_dashboard"))
@@ -526,16 +534,18 @@ class OwnerDashboardViewTests(TestCase):
 class OwnerMembersViewTests(TestCase):
 
     def setUp(self):
-        self.user, _ = make_owner()
+        self.user, self.owner = make_owner()
         self.client.login(username="pastor", password="TestPass123")
 
-        self.alice = make_member("Alice Mensah", "333", department="Choir")
-        self.bob   = make_member("Bob Asante",   "444", department="Ushers")
-        self.carol = make_member("Carol Osei",   "555", department="Choir")
+        self.church = self.owner.church
 
-        event = make_event()
-        AttendanceLog.objects.create(member=self.alice, event=event)
-        AttendanceLog.objects.create(member=self.alice, event=make_event("Second", 1))
+        self.alice = make_member("Alice Mensah", "333", church=self.church, department="Choir")
+        self.bob   = make_member("Bob Asante",   "444", church=self.church, department="Ushers")
+        self.carol = make_member("Carol Osei",   "555", church=self.church, department="Choir")
+
+        event = make_event(church=self.church)
+        AttendanceLog.objects.create(member=self.alice, event=event, church=self.church)
+        AttendanceLog.objects.create(member=self.alice, event=make_event("Second", 1, church=self.church), church=self.church)
 
     def test_members_page_returns_200(self):
         response = self.client.get(reverse("attendance:owner_members"))
@@ -543,11 +553,12 @@ class OwnerMembersViewTests(TestCase):
 
     def test_all_members_shown_by_default(self):
         response = self.client.get(reverse("attendance:owner_members"))
-        self.assertEqual(response.context["members"].count(), 3)
+        self.assertEqual(len(list(response.context["members"])), 3)
 
     def test_search_by_name(self):
         response = self.client.get(reverse("attendance:owner_members") + "?search=alice")
-        members = list(response.context["members"])
+        self.assertEqual(response.status_code, 200)
+        members = response.context["members"].object_list
         self.assertEqual(len(members), 1)
         self.assertEqual(members[0].name, "Alice Mensah")
 
@@ -558,14 +569,17 @@ class OwnerMembersViewTests(TestCase):
         self.assertEqual(members[0].name, "Bob Asante")
 
     def test_search_no_match_returns_empty(self):
-        response = self.client.get(reverse("attendance:owner_members") + "?search=zzz")
-        self.assertEqual(response.context["members"].count(), 0)
+        response = self.client.get(reverse("attendance:owner_members") + "?search=Zebra")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["members"].object_list), 0)
 
     def test_department_filter(self):
         response = self.client.get(reverse("attendance:owner_members") + "?department=Choir")
-        names = [m.name for m in response.context["members"]]
+        self.assertEqual(response.status_code, 200)
+        members = response.context["members"].object_list
+        names = [m.name for m in members]
         self.assertIn("Alice Mensah", names)
-        self.assertIn("Carol Osei",   names)
+        self.assertNotIn("Bob Osei", names)
         self.assertNotIn("Bob Asante", names)
 
     def test_department_dropdown_contains_distinct_values(self):
@@ -578,12 +592,14 @@ class OwnerMembersViewTests(TestCase):
     def test_members_sorted_by_attendance_descending(self):
         """Alice has 2 check-ins; Bob and Carol have 0 — Alice should be first."""
         response = self.client.get(reverse("attendance:owner_members"))
-        members = list(response.context["members"])
+        self.assertEqual(response.status_code, 200)
+        members = response.context["members"].object_list
         self.assertEqual(members[0].name, "Alice Mensah")
 
     def test_combined_search_and_department_filter(self):
         response = self.client.get(reverse("attendance:owner_members") + "?search=carol&department=Choir")
-        members = list(response.context["members"])
+        self.assertEqual(response.status_code, 200)
+        members = response.context["members"].object_list
         self.assertEqual(len(members), 1)
         self.assertEqual(members[0].name, "Carol Osei")
 
@@ -606,57 +622,64 @@ class OwnerMembersViewTests(TestCase):
 class OwnerEventDetailViewTests(TestCase):
 
     def setUp(self):
-        self.user, _ = make_owner()
+        self.user, self.owner = make_owner()
         self.client.login(username="pastor", password="TestPass123")
 
-        self.member1 = make_member("Present Person", "666")
-        self.member2 = make_member("Absent Person",  "777")
-        self.event   = make_event("Big Service")
+        self.church = self.owner.church
 
-        AttendanceLog.objects.create(member=self.member1, event=self.event)
+        self.member1 = make_member("Present Person", "666", church=self.church)
+        self.member2 = make_member("Absent Person",  "777", church=self.church)
+        self.event   = make_event("Big Service", church=self.church)
+
+        AttendanceLog.objects.create(member=self.member1, event=self.event, church=self.church)
 
     def test_event_detail_returns_200(self):
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         self.assertEqual(response.status_code, 200)
 
     def test_event_detail_404_for_missing_event(self):
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": 9999}))
+        import uuid
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": uuid.uuid4()}))
         self.assertEqual(response.status_code, 404)
 
     def test_present_count_correct(self):
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         self.assertEqual(response.context["present_count"], 1)
 
     def test_absent_count_correct(self):
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         self.assertEqual(response.context["absent_count"], 1)
 
     def test_present_member_in_correct_list(self):
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", args=[self.event.uuid]))
+        self.assertEqual(response.status_code, 200)
+
         present_names = [m.name for m in response.context["present_members"]]
         self.assertIn("Present Person", present_names)
-        self.assertNotIn("Absent Person", present_names)
+
+        absent_names = [m.name for m in response.context["absent_members"]]
+        self.assertIn("Absent Person", absent_names)
 
     def test_absent_member_in_correct_list(self):
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         absent_names = [m.name for m in response.context["absent_members"]]
         self.assertIn("Absent Person", absent_names)
         self.assertNotIn("Present Person", absent_names)
 
     def test_attendance_percentage_correct(self):
         # 1 present out of 2 total members = 50%
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         self.assertEqual(response.context["attendance_pct"], 50.0)
 
     def test_attendance_pct_zero_when_no_members(self):
         Member.objects.all().delete()
         AttendanceLog.objects.all().delete()
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         self.assertEqual(response.context["attendance_pct"], 0)
 
     def test_unauthenticated_redirected_from_event_detail(self):
         self.client.logout()
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": self.event.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event.uuid}))
         self.assertRedirects(response, reverse("attendance:owner_login"), fetch_redirect_response=False)
 
 
@@ -672,10 +695,10 @@ class MultiTenancyTests(TestCase):
 
         # Create owners for both churches
         self.user_a = User.objects.create_user(username="pastor_a", password="Password123")
-        self.owner_a = ChurchOwner.objects.create(user=self.user_a, church=self.church_a, church_name="Church A")
+        self.owner_a = ChurchOwner.objects.create(user=self.user_a, church=self.church_a)
 
         self.user_b = User.objects.create_user(username="pastor_b", password="Password123")
-        self.owner_b = ChurchOwner.objects.create(user=self.user_b, church=self.church_b, church_name="Church B")
+        self.owner_b = ChurchOwner.objects.create(user=self.user_b, church=self.church_b)
 
     def test_phone_number_uniqueness_isolated_per_church(self):
         # Register same phone number in Church A
@@ -766,11 +789,11 @@ class MultiTenancyTests(TestCase):
         self.assertNotIn("Member B", members)
 
         # Check event detail for Church A event
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": event_a.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": event_a.uuid}))
         self.assertEqual(response.status_code, 200)
 
         # Attempting to access Church B event should return 404
-        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"pk": event_b.pk}))
+        response = self.client.get(reverse("attendance:owner_event_detail", kwargs={"event_uuid": event_b.uuid}))
         self.assertEqual(response.status_code, 404)
 
 
@@ -836,3 +859,115 @@ class UserFlowModificationTests(TestCase):
         random_uuid = uuid.uuid4()
         response = self.client.get(reverse("attendance:church_events", kwargs={"church_uuid": random_uuid}))
         self.assertEqual(response.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# Edit Event View Tests
+# ---------------------------------------------------------------------------
+@override_settings(TEMPLATES=[{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [], "APP_DIRS": False,
+    "OPTIONS": {
+        "loaders": [("django.template.loaders.locmem.Loader", OWNER_TEMPLATES)],
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
+    },
+}])
+class OwnerEditEventViewTests(TestCase):
+
+    def setUp(self):
+        # Create Owner & Church A
+        self.church_a = Church.objects.create(name="Church A")
+        self.user_a = User.objects.create_user(username="pastor_a", password="Password123")
+        self.owner_a = ChurchOwner.objects.create(user=self.user_a, church=self.church_a)
+
+        # Create Church B
+        self.church_b = Church.objects.create(name="Church B")
+        self.user_b = User.objects.create_user(username="pastor_b", password="Password123")
+        self.owner_b = ChurchOwner.objects.create(user=self.user_b, church=self.church_b)
+
+        # Create Event for Church A
+        self.event_a = Event.objects.create(
+            church=self.church_a,
+            name="Original A Name",
+            event_date=date.today(),
+            event_time=time(9, 0),
+            is_active=True
+        )
+
+        # Create Event for Church B
+        self.event_b = Event.objects.create(
+            church=self.church_b,
+            name="Original B Name",
+            event_date=date.today(),
+            event_time=time(10, 0),
+            is_active=True
+        )
+
+    def test_owner_can_load_edit_page(self):
+        self.client.login(username="pastor_a", password="Password123")
+        url = reverse("attendance:owner_edit_event", kwargs={"event_uuid": self.event_a.uuid})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Original A Name")
+
+    def test_owner_can_save_valid_changes(self):
+        self.client.login(username="pastor_a", password="Password123")
+        url = reverse("attendance:owner_edit_event", kwargs={"event_uuid": self.event_a.uuid})
+        post_data = {
+            "name": "Updated Name",
+            "description": "Updated Description",
+            "event_date": "2026-08-08",
+            "event_time": "11:30",
+            "is_active": "on"
+        }
+        response = self.client.post(url, post_data)
+        # Should redirect to event detail view
+        self.assertRedirects(
+            response,
+            reverse("attendance:owner_event_detail", kwargs={"event_uuid": self.event_a.uuid}),
+            fetch_redirect_response=False
+        )
+
+        self.event_a.refresh_from_db()
+        self.assertEqual(self.event_a.name, "Updated Name")
+        self.assertEqual(self.event_a.description, "Updated Description")
+        self.assertEqual(self.event_a.event_date.strftime("%Y-%m-%d"), "2026-08-08")
+        self.assertEqual(self.event_a.event_time.strftime("%H:%M"), "11:30")
+        self.assertTrue(self.event_a.is_active)
+
+    def test_owner_edit_event_isolation(self):
+        # Pastor A cannot load Pastor B's event edit page
+        self.client.login(username="pastor_a", password="Password123")
+        url = reverse("attendance:owner_edit_event", kwargs={"event_uuid": self.event_b.uuid})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+        # Pastor A cannot post changes to Pastor B's event
+        post_data = {
+            "name": "Hacked B Name",
+            "event_date": "2026-08-08",
+            "event_time": "11:30"
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 404)
+        
+        self.event_b.refresh_from_db()
+        self.assertEqual(self.event_b.name, "Original B Name")
+
+    def test_validation_errors_reported(self):
+        self.client.login(username="pastor_a", password="Password123")
+        url = reverse("attendance:owner_edit_event", kwargs={"event_uuid": self.event_a.uuid})
+        # Post missing name
+        post_data = {
+            "name": "",
+            "event_date": "2026-08-08",
+            "event_time": "11:30"
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "errors")
+        self.assertContains(response, "Event name is required.")

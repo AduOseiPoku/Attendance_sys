@@ -11,22 +11,24 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# ---------------------------------------------------------------------------
+# Core security settings — all driven by environment variables
+# ---------------------------------------------------------------------------
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-kt0i(3gdbu$f)1*va5c_cz^fqc!_9j&r16_pire^+ujnim-y(2'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-kt0i(3gdbu$f)1*va5c_cz^fqc!_9j&r16_pire^+ujnim-y(2')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-import os
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = config('DEBUG', default='True', cast=bool)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')]
 
 
 # Application definition
@@ -38,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_ratelimit',
     'attendance'
 ]
 
@@ -53,9 +56,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'core.urls'
-
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 TEMPLATES = [
@@ -76,28 +76,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-from decouple import config
-import dj_database_url
-
-# Use dj_database_url to parse the DATABASE_URL environment variable.
-# Fallback to local postgres or SQLite if DATABASE_URL is not set.
+# ---------------------------------------------------------------------------
+# Database — driven by DATABASE_URL env var (set in Dokploy).
+# Falls back to a local SQLite file for development if DATABASE_URL is not set.
+# ---------------------------------------------------------------------------
 DATABASE_URL = config('DATABASE_URL', default='')
 
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
 else:
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'attendance_db',
-        'USER': 'attendance_admin',
-        'PASSWORD': 'Prince@2406',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 
 
@@ -125,7 +120,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Phase 4.5: Configurable Timezone
+TIME_ZONE = config('TIME_ZONE', default='Africa/Accra')
 
 USE_I18N = True
 
@@ -151,7 +147,22 @@ LOGIN_URL = '/owner/login/'
 LOGIN_REDIRECT_URL = '/owner/'
 LOGOUT_REDIRECT_URL = '/owner/login/'
 
+# ---------------------------------------------------------------------------
+# Cache — Used by django_ratelimit for IP-based throttling.
+# LocMemCache is fine for single-server deployments. The ratelimit library
+# warns about non-shared caches — silenced here as this is a single-process app.
+# ---------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+SILENCED_SYSTEM_CHECKS = ["django_ratelimit.E003", "django_ratelimit.W001"]
+
+# ---------------------------------------------------------------------------
 # CSRF Trusted Origins for production security
+# ---------------------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS_ENV = config('CSRF_TRUSTED_ORIGINS', default='')
 if CSRF_TRUSTED_ORIGINS_ENV:
     CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',')]
@@ -161,3 +172,18 @@ else:
         'http://127.0.0.1:8000',
     ]
 
+# ---------------------------------------------------------------------------
+# Production HTTPS security hardening
+# Only activates when DEBUG=False (i.e. in Dokploy production).
+# Dokploy handles the SSL termination so SECURE_SSL_REDIRECT is False
+# (the reverse proxy already forces HTTPS before requests reach Django).
+# ---------------------------------------------------------------------------
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000          # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True            # Session cookie only over HTTPS
+    CSRF_COOKIE_SECURE = True               # CSRF cookie only over HTTPS
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_SSL_REDIRECT = False             # Dokploy proxy handles this

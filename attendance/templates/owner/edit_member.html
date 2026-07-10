@@ -1,0 +1,127 @@
+{% extends "owner/base.html" %}
+{% block title %}Edit Member — {{ member.name }}{% endblock %}
+{% block page_title %}Edit Member{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    max-width: 640px;
+  }
+  .form-header { margin-bottom: 28px; }
+  .form-header h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .form-header p { font-size: 13.5px; color: var(--muted); }
+  
+  .form-group { margin-bottom: 20px; }
+  .form-group label {
+    display: block; font-size: 12.5px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: .04em; margin-bottom: 8px;
+  }
+  .form-group label .required { color: var(--red); margin-left: 2px; }
+  
+  .form-input, .form-textarea {
+    width: 100%; padding: 12px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 14px;
+    transition: border-color .2s, box-shadow .2s; outline: none;
+  }
+  .form-input:focus, .form-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, .15);
+  }
+  .form-textarea { resize: vertical; min-height: 90px; }
+  
+  .form-actions {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 28px; padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 24px; border-radius: 10px;
+    font-family: 'Inter', sans-serif; font-size: 13.5px;
+    font-weight: 600; cursor: pointer; border: none; text-decoration: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #8b7dff);
+    color: #fff; box-shadow: 0 4px 14px rgba(108, 99, 255, .3);
+  }
+  .btn-ghost {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+  }
+  
+  .form-errors {
+    background: rgba(248, 113, 113, .08);
+    border: 1px solid rgba(248, 113, 113, .25);
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;
+  }
+  .form-errors ul { list-style: none; padding: 0; margin: 0; }
+  .form-errors li { font-size: 13px; color: var(--red); padding: 3px 0; display: flex; align-items: center; gap: 8px; }
+  .form-errors li::before { content: '⚠'; font-size: 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <div class="form-header">
+    <h3>✏️ Edit Member</h3>
+    <p>Update the profile details for {{ member.name }}.</p>
+  </div>
+
+  {% if errors %}
+  <div class="form-errors">
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="POST" autocomplete="off">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label>Full Name <span class="required">*</span></label>
+      <input type="text" name="name" class="form-input"
+             value="{{ form_data.name }}" required autofocus />
+    </div>
+
+    <div class="form-group">
+      <label>Phone Number <span class="required">*</span></label>
+      <input type="tel" name="phone_number" class="form-input"
+             value="{{ form_data.phone_number }}" required />
+    </div>
+
+    <div class="form-group">
+      <label>Emergency Phone Number</label>
+      <input type="tel" name="emergency_phone_number" class="form-input"
+             value="{{ form_data.emergency_phone_number }}" />
+    </div>
+
+    <div class="form-group">
+      <label>Address</label>
+      <textarea name="address" class="form-textarea">{{ form_data.address }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Department / Ministry</label>
+      <input type="text" name="department" class="form-input"
+             value="{{ form_data.department }}" placeholder="e.g., Choir, Ushers" />
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <span>💾</span> Save Changes
+      </button>
+      <a href="{% url 'attendance:owner_members' %}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

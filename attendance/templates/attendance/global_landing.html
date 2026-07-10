@@ -1,81 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Your Church</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-    </style>
-</head>
-<body class="bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center min-h-screen p-6">
-    <!-- Main Card -->
-    <div class="bg-white/80 backdrop-blur-md p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100 max-w-md w-full text-center transition-all duration-300 hover:shadow-2xl">
-        <!-- Icon Badge -->
-        <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100/50 text-3xl">
-            ⛪
-        </div>
-        
-        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Welcome</h1>
-        <p class="text-slate-500 mt-2 text-sm md:text-base leading-relaxed">
-            Select your church to locate active check-in events
-        </p>
+{% extends "attendance/member_base.html" %}
+{% block title %}Select Your Church{% endblock %}
+{% block meta_description %}Select your church to find active check-in events.{% endblock %}
 
-        <div class="mt-8 text-left space-y-6">
-            <!-- Selector Container -->
-            <div>
-                <label for="churchSelect" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                    Select Church
-                </label>
-                <div class="relative">
-                    <select id="churchSelect" class="w-full p-4 pr-10 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-sm transition appearance-none text-slate-700 font-medium">
-                        <option value="">-- Choose Church --</option>
-                        {% for church in churches %}
-                            <option value="{{ church.uuid }}">{{ church.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <!-- Custom Arrow Icon -->
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
+{% block extra_styles %}
+<style>
+  body { background: linear-gradient(135deg, #ecfdf5 0%, #f0f9ff 100%); }
+  .select-wrap { position: relative; margin-top: 6px; }
+  .select-wrap::after {
+    content: '';
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #64748b;
+    pointer-events: none;
+  }
+  #churchSelect { padding-right: 36px; }
+  #proceedBtn { margin-top: 20px; }
+</style>
+{% endblock %}
 
-            <!-- Proceed Button -->
-            <button id="proceedBtn" class="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-emerald-600/20 hover:shadow-emerald-700/30 transition-all duration-200 opacity-50 cursor-not-allowed" disabled>
-                Find Active Events
-            </button>
-        </div>
-    </div>
+{% block content %}
+<div style="text-align:center; margin-bottom: 28px;">
+  <div class="icon-badge icon-badge-green" style="font-size:32px;">⛪</div>
+  <h1>Welcome</h1>
+  <p class="subtitle">Select your church to locate active check-in events</p>
+</div>
 
-    <script>
-        const churchSelect = document.getElementById('churchSelect');
-        const proceedBtn = document.getElementById('proceedBtn');
+<div class="form-group">
+  <label for="churchSelect">Select Church</label>
+  <div class="select-wrap">
+    <select
+      id="churchSelect"
+      class="form-select"
+      data-url-pattern="{% url 'attendance:church_events' '00000000-0000-0000-0000-000000000000' %}"
+    >
+      <option value="">— Choose a Church —</option>
+      {% for church in churches %}
+        <option value="{{ church.uuid }}">{{ church.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
 
-        // Monitor select changes to toggle button state
-        churchSelect.addEventListener('change', function() {
-            const hasSelection = !!this.value;
-            proceedBtn.disabled = !hasSelection;
-            if (hasSelection) {
-                proceedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            } else {
-                proceedBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-        });
+<button id="proceedBtn" class="btn btn-primary btn-disabled" disabled>
+  Find Active Events →
+</button>
+{% endblock %}
 
-        // Redirect on click
-        proceedBtn.addEventListener('click', function() {
-            const churchId = churchSelect.value;
-            if (churchId) {
-                window.location.href = `/church/${churchId}/`;
-            }
-        });
-    </script>
-</body>
-</html>
+{% block extra_scripts %}
+<script>
+  const sel = document.getElementById('churchSelect');
+  const btn = document.getElementById('proceedBtn');
+
+  sel.addEventListener('change', function () {
+    const hasVal = !!this.value;
+    btn.disabled = !hasVal;
+    btn.classList.toggle('btn-disabled', !hasVal);
+  });
+
+  btn.addEventListener('click', function () {
+    const churchId = sel.value;
+    if (churchId) {
+      const pattern = sel.dataset.urlPattern;
+      window.location.href = pattern.replace('00000000-0000-0000-0000-000000000000', churchId);
+    }
+  });
+</script>
+{% endblock %}

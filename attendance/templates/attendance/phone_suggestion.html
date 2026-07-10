@@ -1,34 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Phone</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
-<body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full">
-        <h3 class="text-xl font-bold text-slate-800">Phone number matches a profile</h3>
-        <p class="text-slate-500 text-sm mt-1">We have a profile for <strong>{{ member.name }}</strong> with phone <strong>{{ masked_phone }}</strong>.</p>
+{% extends "attendance/member_base.html" %}
+{% block title %}Confirm Phone{% endblock %}
 
-        <form method="POST" action="{% url 'attendance:confirm_identity' event.uuid member.uuid %}" class="mt-4">
-            {% csrf_token %}
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition">Confirm and Check In</button>
-        </form>
-        <div class="mt-4 space-y-3">
-            <div class="text-sm text-slate-600">If this isn't you, choose one of the options below:</div>
+{% block content %}
+<div style="margin-bottom:20px;">
+  <div class="icon-badge icon-badge-blue" style="font-size:26px; margin-bottom:16px;">📱</div>
+  <h2>Phone number matches a profile</h2>
+  <p class="subtitle">
+    We have a profile for <strong>{{ member.name }}</strong>
+    with phone ending in <strong>{{ masked_phone }}</strong>.
+    Is that you?
+  </p>
+</div>
 
-            <a href="{% url 'attendance:onboard_member' event.uuid %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}" class="w-full block text-center bg-amber-500 hover:bg-amber-600 text-white font-medium p-3 rounded-lg transition">No — I'm a visitor / Register</a>
+<form method="POST" action="{% url 'attendance:confirm_identity' event.uuid member.uuid %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-blue">
+    ✓ Yes, Confirm and Check In
+  </button>
+</form>
 
-            <form method="POST" action="{% url 'attendance:quick_checkin' event.uuid %}">
-                {% csrf_token %}
-                <input type="hidden" name="name" value="{{ typed_name }}">
-                <input type="hidden" name="phone" value="{{ typed_phone }}">
-                <button type="submit" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition">Not listed — Quick Check-in</button>
-            </form>
+<hr class="divider">
 
-            <div class="text-sm text-slate-500">Or <a href="{% url 'attendance:scan_landing' event.uuid %}" class="text-blue-600 underline">try again</a> to re-enter your details.</div>
-        </div>
-    </div>
-</body>
-</html>
+<p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Not you? Choose an option below:</p>
+
+<div class="action-stack">
+  <a href="{% url 'attendance:onboard_member' event.uuid %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}"
+     class="btn btn-amber">
+    No — I'm a New Visitor / Register
+  </a>
+
+  <form method="POST" action="{% url 'attendance:quick_checkin' event.uuid %}">
+    {% csrf_token %}
+    <input type="hidden" name="name" value="{{ typed_name }}">
+    <input type="hidden" name="phone" value="{{ typed_phone }}">
+    <button type="submit" class="btn btn-primary">
+      Quick Check-in with My Name
+    </button>
+  </form>
+</div>
+
+<p class="hint">
+  Or <a href="{% url 'attendance:scan_landing' event.uuid %}">try again</a> to re-enter your details.
+</p>
+{% endblock %}

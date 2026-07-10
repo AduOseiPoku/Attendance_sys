@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Church Attendance{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Church attendance check-in system.{% endblock %}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f8fafc;
+      --surface:  #ffffff;
+      --border:   #e2e8f0;
+      --accent:   #059669;
+      --accent2:  #0284c7;
+      --text:     #1e293b;
+      --muted:    #64748b;
+      --red:      #ef4444;
+      --amber:    #f59e0b;
+      --green:    #10b981;
+      --radius:   16px;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .card-wide { max-width: 580px; }
+    .card-narrow { max-width: 400px; }
+
+    /* ── Icon badge ── */
+    .icon-badge {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 20px;
+      flex-shrink: 0;
+    }
+    .icon-badge-green  { background: #d1fae5; }
+    .icon-badge-blue   { background: #dbeafe; }
+    .icon-badge-amber  { background: #fef3c7; }
+    .icon-badge-red    { background: #fee2e2; }
+
+    /* ── Typography ── */
+    h1, h2, h3 { color: var(--text); font-weight: 700; line-height: 1.25; }
+    h1 { font-size: 26px; }
+    h2 { font-size: 22px; }
+    h3 { font-size: 18px; }
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 6px;
+      line-height: 1.6;
+    }
+
+    /* ── Form elements ── */
+    .form-group { margin-top: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 7px;
+    }
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(5,150,105,.12);
+    }
+    .form-input::placeholder,
+    .form-textarea::placeholder { color: #94a3b8; }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-select { appearance: none; cursor: pointer; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: transform .15s, box-shadow .15s, background .15s, opacity .15s;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(5,150,105,.28);
+    }
+    .btn-primary:hover {
+      background: #047857;
+      box-shadow: 0 6px 20px rgba(5,150,105,.38);
+      transform: translateY(-1px);
+    }
+    .btn-blue {
+      background: var(--accent2);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(2,132,199,.25);
+    }
+    .btn-blue:hover { background: #0369a1; transform: translateY(-1px); }
+    .btn-amber {
+      background: var(--amber);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(245,158,11,.25);
+    }
+    .btn-amber:hover { background: #d97706; transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: #94a3b8; color: var(--text); background: var(--bg); }
+    .btn-disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ── Alert / Error banner ── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      margin-top: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .alert-info  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* ── Action stack ── */
+    .action-stack { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+    /* ── Hint text ── */
+    .hint { font-size: 13px; color: var(--muted); margin-top: 16px; line-height: 1.6; }
+    .hint a { color: var(--accent2); text-decoration: underline; }
+
+    /* ── Radio option card ── */
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      margin-top: 10px;
+    }
+    .radio-option:hover { border-color: var(--accent); background: #f0fdf4; }
+    .radio-option input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+    .radio-option .ro-label { font-weight: 600; font-size: 14px; }
+    .radio-option .ro-sub   { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  </style>
+  {% block extra_styles %}{% endblock %}
+</head>
+<body>
+  {% block body %}
+  <div class="card {% block card_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </div>
+  {% endblock %}
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

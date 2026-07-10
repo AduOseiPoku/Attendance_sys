@@ -1,16 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-sm w-full text-center">
-        <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
-        <h2 class="text-2xl font-bold text-slate-800">Success!</h2>
-        <p class="text-slate-600 mt-2 text-sm">{{ message }}</p>
-    </div>
-</body>
-</html>
+{% extends "attendance/member_base.html" %}
+{% block title %}Check-In Successful{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  <div class="icon-badge icon-badge-green" style="font-size:32px; margin-bottom:20px;">✓</div>
+  <h2>Success!</h2>
+  <p class="subtitle" style="margin-top:10px;">{{ message }}</p>
+
+  {% if event and event.church %}
+  <a href="{% url 'attendance:church_events' event.church.uuid %}"
+     class="btn btn-ghost"
+     style="max-width:260px; margin: 28px auto 0;">
+    ← Back to Events
+  </a>
+  {% endif %}
+</div>
+{% endblock %}

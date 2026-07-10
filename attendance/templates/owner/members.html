@@ -200,17 +200,15 @@
 
 <!-- Members Table -->
 <div class="card" style="padding: 0; overflow: hidden;">
-  {% if members %}
   <table>
     <thead>
       <tr>
         <th>Name</th>
         <th>Phone</th>
-        <th>Emergency Contact</th>
-        <th>Address</th>
         <th>Department</th>
-        <th>Attendances</th>
-        <th>Joined</th>
+        <th>Check-ins</th>
+        <th>Registered On</th>
+        <th style="text-align:right;">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -218,46 +216,46 @@
       <tr>
         <td class="member-name">{{ member.name }}</td>
         <td style="color:var(--muted); font-size:13px;">{{ member.phone_number }}</td>
-        <td style="color:var(--muted); font-size:13px;">{{ member.emergency_phone_number }}</td>
-        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px;" title="{{ member.address }}">
-          {{ member.address }}
-        </td>
         <td>
           {% if member.department %}
-            <span class="dept-tag">{{ member.department }}</span>
+            <span class="badge" style="background:rgba(255,255,255,.05); color:var(--muted);">{{ member.department }}</span>
           {% else %}
-            <span style="color:var(--muted); font-size:12px;">—</span>
+            <span style="color:var(--border); font-size:12px;">—</span>
           {% endif %}
         </td>
-        <td>
-          <div class="attend-bar-wrap">
-            <div class="attend-bar">
-              <div class="attend-bar-fill"
-                   data-width="{% if total_events > 0 %}{% widthratio member.total_attendances total_events 100 %}{% else %}0{% endif %}">
-              </div>
-            </div>
-            <span class="attend-count">{{ member.total_attendances }}</span>
-          </div>
+        <td style="font-weight:600; color:var(--accent2);">{{ member.total_attendances }}</td>
+        <td style="font-size:12.5px; color:var(--muted);">{{ member.created_at|date:"M d, Y" }}</td>
+        <td style="text-align:right; display:flex; justify-content:flex-end; gap:12px;">
+          <a href="{% url 'attendance:owner_edit_member' member.uuid %}" class="link-accent" style="font-size:12px;">Edit</a>
+          <form method="POST" action="{% url 'attendance:owner_deactivate_member' member.uuid %}" onsubmit="return confirm('Remove {{ member.name }} from the active roster? Their attendance history will be preserved.')" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="link-accent" style="color:var(--red); font-size:12px; background:none; border:none; cursor:pointer; padding:0;">Remove</button>
+          </form>
         </td>
-        <td style="color:var(--muted); font-size:12.5px;">{{ member.created_at|date:"M d, Y" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding: 40px; color:var(--muted);">
+          No members found matching your criteria.
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <div class="empty-state">
-    <span class="emoji">👥</span>
-    <p>No members found{% if search or department %} for the current filters{% endif %}.</p>
-  </div>
-  {% endif %}
 </div>
 
-{% endblock %}
+{% if is_paginated %}
+<div class="pagination-bar" style="display:flex; align-items:center; justify-content:center; gap:16px; margin-top:24px;">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&search={{ search }}&department={{ department }}" class="page-btn" style="padding:8px 16px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); text-decoration:none; font-size:13px; font-weight:600;">← Previous</a>
+  {% endif %}
+  <span class="page-info" style="font-size:13px; color:var(--muted);">
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  </span>
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&search={{ search }}&department={{ department }}" class="page-btn" style="padding:8px 16px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); text-decoration:none; font-size:13px; font-weight:600;">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
 
-<script>
-  /* Apply attendance bar widths from data attributes to avoid
-     CSS linter warnings caused by Django template tags in style attributes. */
-  document.querySelectorAll('.attend-bar-fill[data-width]').forEach(function(el) {
-    el.style.width = el.getAttribute('data-width') + '%';
-  });
-</script>
+{% endblock %}

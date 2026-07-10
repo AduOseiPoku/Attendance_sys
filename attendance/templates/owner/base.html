@@ -264,9 +264,12 @@
     </nav>
 
     <div class="sidebar-footer">
-      <a href="{% url 'attendance:owner_logout' %}" class="logout-btn">
-        <span>🚪</span> Sign Out
-      </a>
+      <form method="POST" action="{% url 'attendance:owner_logout' %}" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn">
+          <span>🚪</span> Sign Out
+        </button>
+      </form>
     </div>
   </aside>
 

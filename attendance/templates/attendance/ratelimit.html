@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Too Many Requests</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 48px 40px;
+            max-width: 440px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .icon {
+            width: 72px; height: 72px;
+            background: #fef2f2;
+            color: #ef4444;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 24px;
+        }
+        h1 { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
+        p  { font-size: 14px; color: #64748b; line-height: 1.7; margin-bottom: 28px; }
+        .back-btn {
+            display: inline-block;
+            background: #1e293b;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 12px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .back-btn:hover { background: #334155; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">⏳</div>
+        <h1>Too Many Attempts</h1>
+        <p>
+            You've submitted too many requests in a short period of time.<br>
+            Please wait a moment and try again.
+        </p>
+        <a href="javascript:history.back()" class="back-btn">← Go Back</a>
+    </div>
+</body>
+</html>

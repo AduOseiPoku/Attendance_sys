@@ -1,60 +1,74 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Choose Your Profile</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
-<body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-lg w-full">
-        <h3 class="text-xl font-bold text-slate-800">Multiple people have the name "{{ name }}"</h3>
-        <p class="text-slate-500 text-sm mt-1">Please select your profile by recognizing a masked phone number below.</p>
+{% extends "attendance/member_base.html" %}
+{% block title %}Choose Your Profile{% endblock %}
 
-        <form id="pickForm" method="POST" class="mt-4">
-            {% csrf_token %}
-            <div class="space-y-2">
-                {% for m in members_data %}
-                    <label class="flex items-center gap-3 p-2 border rounded-lg">
-                        <input type="radio" name="member_uuid" value="{{ m.uuid }}" class="radio">
-                        <div>
-                            <div class="font-medium">Profile #{{ forloop.counter }}</div>
-                            <div class="text-sm text-slate-600">Phone: {{ m.masked_phone }}</div>
-                        </div>
-                    </label>
-                {% endfor %}
-            </div>
+{% block content %}
+<div style="margin-bottom:20px;">
+  <div class="icon-badge icon-badge-amber" style="font-size:24px; margin-bottom:16px;">👥</div>
+  <h2>Multiple profiles found</h2>
+  <p class="subtitle">
+    Multiple people share the name <strong>"{{ name }}"</strong>.
+    Please select your profile by recognizing your masked phone number.
+  </p>
+</div>
 
-            <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition">Confirm Selection</button>
-        </form>
+<form
+  id="pickForm"
+  method="POST"
+  data-url-pattern="{% url 'attendance:confirm_identity' event.uuid '00000000-0000-0000-0000-000000000000' %}"
+>
+  {% csrf_token %}
 
-        <div class="mt-4 space-y-3">
-            <div class="text-sm text-slate-600">If none of these look familiar, you can register or quickly check in:</div>
-
-            <a href="{% url 'attendance:onboard_member' event.uuid %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}" class="w-full block text-center bg-amber-500 hover:bg-amber-600 text-white font-medium p-3 rounded-lg transition">No — I'm a visitor / Register</a>
-
-            <form method="POST" action="{% url 'attendance:quick_checkin' event.uuid %}">
-                {% csrf_token %}
-                <input type="hidden" name="name" value="{{ typed_name }}">
-                <input type="hidden" name="phone" value="{{ typed_phone }}">
-                <button type="submit" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition">Not listed — Quick Check-in</button>
-            </form>
-        </div>
-
-        <script>
-            document.getElementById('pickForm').addEventListener('submit', function(e){
-                e.preventDefault();
-                const form = e.target;
-                const selected = form.member_uuid.value;
-                if(!selected){
-                    alert('Please select a profile.');
-                    return;
-                }
-                form.action = `/confirm/{{ event.uuid }}/${selected}/`;
-                form.method = 'POST';
-                form.submit();
-            });
-        </script>
+  {% for m in members_data %}
+  <label class="radio-option">
+    <input type="radio" name="member_uuid" value="{{ m.uuid }}">
+    <div>
+      <div class="ro-label">Profile #{{ forloop.counter }}</div>
+      <div class="ro-sub">Phone: {{ m.masked_phone }}</div>
     </div>
-</body>
-</html>
+  </label>
+  {% endfor %}
+
+  <button type="submit" class="btn btn-blue" style="margin-top:20px;">
+    Confirm Selection →
+  </button>
+</form>
+
+<hr class="divider">
+
+<p style="font-size:13px; color:var(--muted); margin-bottom:12px;">
+  None of these look familiar?
+</p>
+
+<div class="action-stack">
+  <a href="{% url 'attendance:onboard_member' event.uuid %}?name={{ typed_name|urlencode }}&phone={{ typed_phone|urlencode }}"
+     class="btn btn-amber">
+    No — I'm a New Visitor / Register
+  </a>
+
+  <form method="POST" action="{% url 'attendance:quick_checkin' event.uuid %}">
+    {% csrf_token %}
+    <input type="hidden" name="name" value="{{ typed_name }}">
+    <input type="hidden" name="phone" value="{{ typed_phone }}">
+    <button type="submit" class="btn btn-primary">
+      Quick Check-in with My Name
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById('pickForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const radioEl = form.querySelector('input[name="member_uuid"]:checked');
+    if (!radioEl) {
+      alert('Please select a profile first.');
+      return;
+    }
+    const pattern = form.dataset.urlPattern;
+    form.action = pattern.replace('00000000-0000-0000-0000-000000000000', radioEl.value);
+    form.submit();
+  });
+</script>
+{% endblock %}

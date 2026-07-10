@@ -1,28 +1,38 @@
 # Use a lightweight Python base image
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000
 
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (e.g. for psycopg2)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir gunicorn psycopg2-binary
 
 # Copy project files
 COPY . /app/
 
-# Collect static files at runtime instead of build time to avoid missing env vars
+# Create a non-root user for security
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
+    && chown -R appuser:appgroup /app
+USER appuser
+
 # Expose port
 EXPOSE 8000
 
-# Run collectstatic, database migrations, and boot Gunicorn
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:8000"]
+# Set up the entrypoint
+COPY --chown=appuser:appgroup entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

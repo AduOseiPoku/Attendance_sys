@@ -4,12 +4,12 @@
 
 {% block extra_styles %}
 <style>
-  /* Stat cards */
+  /* Compact Stat cards */
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    margin-bottom: 28px;
+    gap: 12px;
+    margin-bottom: 20px;
   }
 
   @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -19,41 +19,51 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 22px 24px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
     position: relative;
     overflow: hidden;
     transition: transform .18s, border-color .18s;
   }
 
-  .stat-card:hover { transform: translateY(-3px); border-color: rgba(108,99,255,.35); }
+  .stat-card:hover { transform: translateY(-2px); border-color: rgba(108,99,255,.35); }
 
   .stat-card::before {
     content: '';
     position: absolute;
     top: 0; right: 0;
-    width: 80px; height: 80px;
+    width: 60px; height: 60px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(108,99,255,.12), transparent 70%);
+    background: radial-gradient(circle, rgba(108,99,255,.1), transparent 70%);
     transform: translate(30%, -30%);
   }
 
   .stat-icon {
-    font-size: 22px;
-    margin-bottom: 14px;
-    display: block;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .stat-info {
+    display: flex;
+    flex-direction: column;
   }
 
   .stat-value {
-    font-size: 32px;
+    font-size: 22px;
     font-weight: 800;
     color: var(--text);
     letter-spacing: -.02em;
-    line-height: 1;
-    margin-bottom: 6px;
+    line-height: 1.1;
+    margin-bottom: 1px;
   }
 
   .stat-label {
-    font-size: 12.5px;
+    font-size: 11.5px;
     color: var(--muted);
     font-weight: 500;
   }
@@ -63,65 +73,161 @@
   .stat-teal   { color: var(--accent2);}
   .stat-amber  { color: #fbbf24; }
 
-  /* Charts */
-  .charts-grid {
+  /* Side-by-side Split Grid */
+  .dashboard-body-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.6fr 1.4fr;
     gap: 20px;
-    margin-bottom: 28px;
+    align-items: start;
+    margin-bottom: 20px;
   }
 
-  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 1024px) {
+    .dashboard-body-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 
+  .charts-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Compact Charts */
   .chart-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 24px;
+    padding: 16px 20px;
+  }
+
+  .chart-scroll-container {
+    overflow-x: auto;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(108,99,255,0.2) transparent;
+  }
+
+  .chart-scroll-container::-webkit-scrollbar {
+    height: 6px;
+  }
+  .chart-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .chart-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(108,99,255,0.25);
+    border-radius: 3px;
+  }
+  .chart-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(108,99,255,0.4);
   }
 
   .chart-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
   }
 
   .chart-header h3 {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text);
   }
 
   .chart-header span {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--muted);
   }
 
-  .chart-container { position: relative; height: 240px; }
+  .chart-container { position: relative; height: 160px; }
 
-  /* Recent events table */
+  /* Compact Scrollable Recent Events Card */
+  .events-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    max-height: 426px; /* Exactly aligns with stacked charts column height + gap */
+  }
+
   .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+    flex-shrink: 0;
   }
 
   .section-header h3 {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
   }
 
-  .empty-state {
-    text-align: center;
-    padding: 48px 24px;
-    color: var(--muted);
-    font-size: 13.5px;
+  .events-scroll-container {
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+    padding-right: 4px;
   }
 
-  .empty-state .emoji { font-size: 32px; margin-bottom: 12px; display: block; }
+  .events-scroll-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  .events-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .events-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+  }
+  .events-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Compact table styling */
+  .events-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .events-table th,
+  .events-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .events-table th {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+
+  .events-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .empty-state .emoji { font-size: 28px; margin-bottom: 10px; display: block; }
 </style>
 {% endblock %}
 
@@ -131,102 +237,119 @@
 <div class="stats-grid">
   <div class="stat-card">
     <span class="stat-icon">👥</span>
-    <div class="stat-value stat-accent">{{ total_members }}</div>
-    <div class="stat-label">Total Members</div>
+    <div class="stat-info">
+      <div class="stat-value stat-accent">{{ total_members }}</div>
+      <div class="stat-label">Total Members</div>
+    </div>
   </div>
   <div class="stat-card">
     <span class="stat-icon">📅</span>
-    <div class="stat-value stat-teal">{{ total_events }}</div>
-    <div class="stat-label">Total Events</div>
+    <div class="stat-info">
+      <div class="stat-value stat-teal">{{ total_events }}</div>
+      <div class="stat-label">Total Events</div>
+    </div>
   </div>
   <div class="stat-card">
     <span class="stat-icon">✅</span>
-    <div class="stat-value stat-green">{{ total_checkins }}</div>
-    <div class="stat-label">Total Check-ins</div>
+    <div class="stat-info">
+      <div class="stat-value stat-green">{{ total_checkins }}</div>
+      <div class="stat-label">Total Check-ins</div>
+    </div>
   </div>
   <div class="stat-card">
     <span class="stat-icon">📈</span>
-    <div class="stat-value stat-amber">{{ avg_rate }}%</div>
-    <div class="stat-label">Avg. Attendance Rate</div>
-  </div>
-</div>
-
-<!-- Charts -->
-<div class="charts-grid">
-  <!-- Bar Chart -->
-  <div class="chart-card">
-    <div class="chart-header">
-      <h3>📊 Attendance Per Event</h3>
-      <span>Check-ins per service</span>
-    </div>
-    <div class="chart-container">
-      <canvas id="barChart"></canvas>
-    </div>
-  </div>
-
-  <!-- Line Chart -->
-  <div class="chart-card">
-    <div class="chart-header">
-      <h3>📈 Attendance Trend</h3>
-      <span>Growth over time</span>
-    </div>
-    <div class="chart-container">
-      <canvas id="lineChart"></canvas>
+    <div class="stat-info">
+      <div class="stat-value stat-amber">{{ avg_rate }}%</div>
+      <div class="stat-label">Avg. Event Fill Rate</div>
     </div>
   </div>
 </div>
 
-<!-- Recent Events Table -->
-<div class="card">
-  <div class="section-header">
-    <h3>🕐 Recent Events</h3>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <a href="{% url 'attendance:owner_create_event' %}" class="link-accent" style="font-size:13px;background:rgba(108,99,255,.12);padding:6px 14px;border-radius:8px;">➕ Create Event</a>
-      <a href="{% url 'attendance:owner_dashboard' %}" class="link-accent" style="font-size:13px;">View all</a>
+<!-- Main Area Split Grid -->
+<div class="dashboard-body-grid">
+  <!-- Left Column: Stacked Charts -->
+  <div class="charts-column">
+    <!-- Bar Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>📊 Attendance Per Event</h3>
+        <span>Check-ins per service</span>
+      </div>
+      <div class="chart-scroll-container">
+        <div class="chart-container" id="barChartContainer">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Line Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>📈 Attendance Trend</h3>
+        <span>Growth over time</span>
+      </div>
+      <div class="chart-scroll-container">
+        <div class="chart-container" id="lineChartContainer">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
-  {% if recent_events %}
-  <table>
-    <thead>
-      <tr>
-        <th>Event Name</th>
-        <th>Date</th>
-        <th>Time</th>
-        <th>Attendees</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for event in recent_events %}
-      <tr>
-        <td style="font-weight:500;">
-          {{ event.name }}
-          {% if event.is_active %}
-            <span class="badge badge-green" style="margin-left: 8px; font-size: 10px;">🟢 Active</span>
-          {% else %}
-            <span class="badge" style="background: rgba(255,255,255,.05); color: var(--muted); margin-left: 8px; font-size: 10px;">⚪ Closed</span>
-          {% endif %}
-        </td>
-        <td style="color:var(--muted);">{{ event.event_date }}</td>
-        <td style="color:var(--muted);">{{ event.event_time }}</td>
-        <td>
-          <span class="badge badge-blue">{{ event.attendee_count }}</span>
-        </td>
-        <td>
-          <a href="{% url 'attendance:owner_event_detail' event.pk %}" class="link-accent">View Roster →</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-state">
-    <span class="emoji">📭</span>
-    No events have been created yet.<br>
-    <a href="{% url 'attendance:owner_create_event' %}" class="link-accent" style="margin-top:12px;display:inline-block;">➕ Create your first event</a>
+  <!-- Right Column: Scrollable Recent Events Card -->
+  <div class="events-card">
+    <div class="section-header">
+      <h3>🕐 Recent Events</h3>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <a href="{% url 'attendance:owner_create_event' %}" class="link-accent" style="font-size:12px;background:rgba(108,99,255,.12);padding:4px 10px;border-radius:6px;text-decoration:none;">➕ Create</a>
+        <a href="{% url 'attendance:owner_dashboard' %}" class="link-accent" style="font-size:12px;text-decoration:none;">View all</a>
+      </div>
+    </div>
+
+    <div class="events-scroll-container">
+      {% if recent_events %}
+      <table class="events-table">
+        <thead>
+          <tr>
+            <th>Event Name</th>
+            <th>Date</th>
+            <th>Attendees</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in recent_events %}
+          <tr>
+            <td style="font-weight:500;">
+              <span style="display:block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ event.name }}">
+                {{ event.name }}
+              </span>
+              {% if event.is_active %}
+                <span style="color:var(--green); font-size:10px; font-weight:600;">🟢 Active</span>
+              {% else %}
+                <span style="color:var(--muted); font-size:10px;">⚪ Closed</span>
+              {% endif %}
+            </td>
+            <td style="color:var(--muted); font-size:12px;">{{ event.event_date }}</td>
+            <td>
+              <span class="badge badge-blue">{{ event.attendee_count }}</span>
+            </td>
+            <td>
+              <a href="{% url 'attendance:owner_event_detail' event.uuid %}" class="link-accent" style="font-size:12px;text-decoration:none;">View →</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <span class="emoji">📭</span>
+        No events have been created yet.<br>
+        <a href="{% url 'attendance:owner_create_event' %}" class="link-accent" style="margin-top:12px;display:inline-block;">➕ Create your first event</a>
+      </div>
+      {% endif %}
+    </div>
   </div>
-  {% endif %}
 </div>
 
 {% endblock %}
@@ -240,6 +363,45 @@
 <script>
 const LABELS = JSON.parse(document.getElementById('chart-labels-data').textContent);
 const DATA   = JSON.parse(document.getElementById('chart-data-data').textContent);
+
+// Word-wrapping function for long event names
+function wrapText(text, maxChars = 14) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  words.forEach(word => {
+    if ((currentLine + word).length > maxChars) {
+      if (currentLine) {
+        lines.push(currentLine.trim());
+      }
+      currentLine = word + ' ';
+    } else {
+      currentLine += word + ' ';
+    }
+  });
+  if (currentLine) {
+    lines.push(currentLine.trim());
+  }
+  return lines;
+}
+
+// Format labels to have wrapped names and the date on the bottom line
+const formattedLabels = LABELS.map(labelTuple => {
+  const eventName = labelTuple[0] || '';
+  const dateStr = labelTuple[1] || '';
+  const lines = wrapText(eventName, 14);
+  lines.push(dateStr);
+  return lines;
+});
+
+// Prevent squeezing/shrinking of charts by enforcing a minimum column width and enabling horizontal scrolling
+const parentWidth = document.getElementById('barChartContainer').parentElement.clientWidth || 450;
+const calculatedWidth = LABELS.length * 120; // 120px per event columns
+const targetWidth = Math.max(parentWidth, calculatedWidth);
+
+document.getElementById('barChartContainer').style.width = `${targetWidth}px`;
+document.getElementById('lineChartContainer').style.width = `${targetWidth}px`;
 
 const gridColor  = 'rgba(255,255,255,0.06)';
 const tickColor  = '#7b82a6';
@@ -264,9 +426,10 @@ const sharedOptions = {
     x: {
       grid: { color: gridColor },
       ticks: {
+        autoSkip: false,
         color: tickColor, font: { family: fontFamily, size: 11 },
-        maxTicksLimit: 8,
-        maxRotation: 30,
+        maxRotation: 0,
+        minRotation: 0,
       }
     },
     y: {
@@ -284,7 +447,7 @@ const sharedOptions = {
 new Chart(document.getElementById('barChart'), {
   type: 'bar',
   data: {
-    labels: LABELS,
+    labels: formattedLabels,
     datasets: [{
       label: 'Attendees',
       data: DATA,
@@ -302,7 +465,7 @@ new Chart(document.getElementById('barChart'), {
 new Chart(document.getElementById('lineChart'), {
   type: 'line',
   data: {
-    labels: LABELS,
+    labels: formattedLabels,
     datasets: [{
       label: 'Attendees',
       data: DATA,

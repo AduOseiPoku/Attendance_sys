@@ -1,49 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Member Registration</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
-<body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full">
-        <h3 class="text-xl font-bold text-slate-800">ID Not Found</h3>
-        <p class="text-slate-500 text-sm mt-1">Please enter your profile details below to complete your event registration.</p>
-        
-        <form method="POST" class="mt-4 space-y-4">
-            {% csrf_token %}
-            {% if error %}
-                <p class="text-red-600 text-sm">{{ error }}</p>
-            {% endif %}
+{% extends "attendance/member_base.html" %}
+{% block title %}New Member Registration{% endblock %}
 
-            <div>
-                <label class="block text-sm font-medium text-slate-600">Full Name</label>
-                <input type="text" name="name" value="{{ suggested_name|default:'' }}" placeholder="John Doe" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
-            </div>
+{% block content %}
+<div style="margin-bottom:20px;">
+  <h2>Complete Your Registration</h2>
+  <p class="subtitle">We couldn't find your profile. Please fill in your details to register and check in.</p>
+</div>
 
-            <div>
-                <label class="block text-sm font-medium text-slate-600">Phone Number</label>
-                <input type="tel" name="phone_number" value="{{ suggested_phone|default:'' }}" placeholder="e.g., +233501234567" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
-            </div>
+{% if error %}
+<div class="alert alert-error">⚠️ {{ error }}</div>
+{% endif %}
 
-            <div>
-                <label class="block text-sm font-medium text-slate-600">Emergency Phone (optional)</label>
-                <input type="tel" name="emergency_phone_number" placeholder="Emergency contact" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-            </div>
+<form method="POST">
+  {% csrf_token %}
 
-            <div>
-                <label class="block text-sm font-medium text-slate-600">Residential Address</label>
-                <textarea name="address" rows="3" placeholder="Enter physical or digital address" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required></textarea>
-            </div>
+  <div class="form-group">
+    <label for="name">Full Name <span style="color:var(--red);">*</span></label>
+    <input type="text" id="name" name="name" class="form-input"
+           placeholder="John Doe"
+           value="{{ suggested_name|default:'' }}" required>
+  </div>
 
-            <div>
-                <label class="block text-sm font-medium text-slate-600">Department (optional)</label>
-                <input type="text" name="department" placeholder="e.g., Youth" class="w-full mt-1 p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-            </div>
+  <div class="form-group">
+    <label for="phone_number">Phone Number <span style="color:var(--red);">*</span></label>
+    <input type="tel" id="phone_number" name="phone_number" class="form-input"
+           placeholder="e.g., +233501234567"
+           value="{{ suggested_phone|default:'' }}" required>
+  </div>
 
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium p-3 rounded-lg transition">Complete Registration</button>
-        </form>
-    </div>
-</body>
-</html>
+  <div class="form-group">
+    <label for="emergency_phone_number">Emergency Contact (optional)</label>
+    <input type="tel" id="emergency_phone_number" name="emergency_phone_number" class="form-input"
+           placeholder="Emergency contact number">
+  </div>
+
+  <div class="form-group">
+    <label for="address">Residential Address (optional)</label>
+    <textarea id="address" name="address" rows="3" class="form-textarea"
+              placeholder="Enter your physical or digital address"></textarea>
+  </div>
+
+  <div class="form-group">
+    <label for="department">Department (optional)</label>
+    <input type="text" id="department" name="department" class="form-input"
+           placeholder="e.g., Youth, Choir, Ushering">
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="margin-top:24px;">
+    Complete Registration →
+  </button>
+</form>
+{% endblock %}

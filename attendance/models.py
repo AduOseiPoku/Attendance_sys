@@ -54,16 +54,27 @@ class Member(models.Model):
     )
 
     emergency_phone_number = models.CharField(
-        max_length=20
+        max_length=20,
+        blank=True,
+        default=''
     )
 
-    address = models.TextField()
+    address = models.TextField(
+        blank=True,
+        default=''
+    )
 
     # Optional church ministry/department
     department = models.CharField(
         max_length=100,
         blank=True,
         null=True
+    )
+
+    # Soft-delete flag — inactive members are hidden from rosters but retain their attendance history
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True
     )
 
     created_at = models.DateTimeField(
@@ -196,14 +207,18 @@ class ChurchOwner(models.Model):
         blank=True
     )
 
-    church_name = models.CharField(
-        max_length=200,
-        default="My Church"
-    )
+    # NOTE: church_name field removed — use the church_name property below instead.
+    # The property always reads from the linked Church record, preventing data drift.
+
+    is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def church_name(self):
+        """Always derived from the linked Church — never out of sync."""
+        return self.church.name if self.church else "My Church"
+
     def __str__(self):
-        church_lbl = self.church.name if self.church else self.church_name
-        return f"Owner: {self.user.username} ({church_lbl})"
+        return f"Owner: {self.user.username} ({self.church_name})"
 
