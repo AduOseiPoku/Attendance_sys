@@ -4,6 +4,29 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def migrate_departments(apps, schema_editor):
+    Member = apps.get_model('attendance', 'Member')
+    Department = apps.get_model('attendance', 'Department')
+    for member in Member.objects.all():
+        if member.old_department:
+            if member.church:
+                # get_or_create to safely create it if it doesn't exist yet
+                dep, created = Department.objects.get_or_create(
+                    church=member.church,
+                    name=member.old_department
+                )
+                member.department = dep
+                member.save()
+
+
+def reverse_departments(apps, schema_editor):
+    Member = apps.get_model('attendance', 'Member')
+    for member in Member.objects.all():
+        if member.department:
+            member.old_department = member.department.name
+            member.save()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,6 +34,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # 1. Create the Department model
         migrations.CreateModel(
             name='Department',
             fields=[
@@ -23,13 +47,31 @@ class Migration(migrations.Migration):
                 'ordering': ['name'],
             },
         ),
-        migrations.AlterField(
+        migrations.AddConstraint(
+            model_name='department',
+            constraint=models.UniqueConstraint(fields=('church', 'name'), name='unique_church_department'),
+        ),
+        
+        # 2. Rename the old string field so we don't lose its data
+        migrations.RenameField(
+            model_name='member',
+            old_name='department',
+            new_name='old_department',
+        ),
+
+        # 3. Add the new ForeignKey field that will replace it
+        migrations.AddField(
             model_name='member',
             name='department',
             field=models.ForeignKey(blank=True, help_text="The member's department or ministry.", null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='members', to='attendance.department'),
         ),
-        migrations.AddConstraint(
-            model_name='department',
-            constraint=models.UniqueConstraint(fields=('church', 'name'), name='unique_church_department'),
+
+        # 4. Migrate the data safely
+        migrations.RunPython(migrate_departments, reverse_code=reverse_departments),
+
+        # 5. Drop the old string field
+        migrations.RemoveField(
+            model_name='member',
+            name='old_department',
         ),
     ]
