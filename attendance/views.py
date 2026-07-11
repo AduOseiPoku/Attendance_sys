@@ -15,7 +15,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
 # pyrefly: ignore [missing-import]
 from django_ratelimit.decorators import ratelimit
-from .models import Member, Event, AttendanceLog, ChurchOwner, Church, GraduationYear
+from .models import Member, Event, AttendanceLog, ChurchOwner, Church, GraduationYear, Department
 from .decorators import owner_required
 
 logger = logging.getLogger(__name__)
@@ -130,12 +130,14 @@ def onboard_member(request, event_uuid):
     if church and church.is_student_church:
         graduation_years = church.graduation_years.all()
 
+    departments = church.departments.all()
+
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         phone_number = normalize_phone(request.POST.get("phone_number", ""))
         emergency_phone_number = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address = request.POST.get("address", "").strip()
-        department = request.POST.get("department", "").strip()
+        department_id = request.POST.get("department")
         
         graduation_year_id = request.POST.get("graduation_year")
         graduation_year = None
@@ -144,6 +146,13 @@ def onboard_member(request, event_uuid):
                 graduation_year = church.graduation_years.get(id=graduation_year_id)
             except (ValueError, TypeError, GraduationYear.DoesNotExist):
                 graduation_year = None
+
+        department = None
+        if department_id:
+            try:
+                department = church.departments.get(id=department_id)
+            except (ValueError, TypeError, Department.DoesNotExist):
+                department = None
 
         try:
             member, created = Member.objects.get_or_create(
@@ -179,17 +188,19 @@ def onboard_member(request, event_uuid):
             logger.warning(f"Onboard: Duplicate phone '{phone_number}' attempted for event '{event.name}'.")
             return render(request, "attendance/onboard.html", {
                 "event": event,
+                "error": "This phone number is already registered to another member.",
                 "suggested_name": name,
-                "suggested_phone": phone_number,
+                "suggested_phone": request.POST.get("phone_number", ""),
                 "graduation_years": graduation_years,
-                "error": "This phone number is already registered in our system."
+                "departments": departments,
             })
 
     return render(request, "attendance/onboard.html", {
         "event": event,
         "suggested_name": suggested_name,
         "suggested_phone": suggested_phone,
-        "graduation_years": graduation_years
+        "graduation_years": graduation_years,
+        "departments": departments,
     })
 
 
@@ -688,13 +699,15 @@ def owner_edit_member(request, member_uuid):
     graduation_years = []
     if church and church.is_student_church:
         graduation_years = church.graduation_years.all()
+        
+    departments = church.departments.all()
 
     if request.method == "POST":
         name                  = request.POST.get("name", "").strip()
         phone_number          = normalize_phone(request.POST.get("phone_number", ""))
         emergency_phone       = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address               = request.POST.get("address", "").strip()
-        department            = request.POST.get("department", "").strip()
+        department_id         = request.POST.get("department")
         graduation_year_id    = request.POST.get("graduation_year")
 
         graduation_year = None
@@ -703,6 +716,13 @@ def owner_edit_member(request, member_uuid):
                 graduation_year = church.graduation_years.get(id=graduation_year_id)
             except (ValueError, TypeError, GraduationYear.DoesNotExist):
                 graduation_year = None
+
+        department = None
+        if department_id:
+            try:
+                department = church.departments.get(id=department_id)
+            except (ValueError, TypeError, Department.DoesNotExist):
+                department = None
 
         errors = []
         if not name:
@@ -714,10 +734,11 @@ def owner_edit_member(request, member_uuid):
             return render(request, "owner/edit_member.html", {
                 "owner": owner, "member": member, "errors": errors,
                 "graduation_years": graduation_years,
+                "departments": departments,
                 "form_data": {
                     "name": name, "phone_number": phone_number,
                     "emergency_phone_number": emergency_phone,
-                    "address": address, "department": department,
+                    "address": address, "department_id": department_id,
                     "graduation_year_id": graduation_year_id,
                 },
             })
@@ -727,7 +748,7 @@ def owner_edit_member(request, member_uuid):
             member.phone_number          = phone_number
             member.emergency_phone_number = emergency_phone
             member.address               = address
-            member.department            = department or None
+            member.department            = department
             member.graduation_year       = graduation_year
             member.save()
             logger.info(f"Member updated: '{name}' (ID:{member.id}) by owner '{request.user.username}'.")
@@ -746,11 +767,12 @@ def owner_edit_member(request, member_uuid):
         "phone_number":           member.phone_number,
         "emergency_phone_number": member.emergency_phone_number,
         "address":                member.address,
-        "department":             member.department or "",
+        "department_id":          member.department_id,
         "graduation_year_id":     member.graduation_year_id,
     }
     return render(request, "owner/edit_member.html", {
-        "owner": owner, "member": member, "form_data": form_data, "graduation_years": graduation_years
+        "owner": owner, "member": member, "form_data": form_data, 
+        "graduation_years": graduation_years, "departments": departments
     })
 
 
@@ -876,6 +898,96 @@ def owner_edit_graduation_year(request, year_id):
         "form_data": form_data
     })
 
+
+# ---------------------------------------------------------------------------
+# Department Management
+# ---------------------------------------------------------------------------
+
+@owner_required
+def owner_departments(request):
+    """Allows the church owner to view and configure departments."""
+    owner = request.user.church_owner
+    church = owner.church
+
+    errors = []
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+
+        if not name:
+            errors.append("Department name is required.")
+        else:
+            try:
+                # Check for duplicate department name in this church case-insensitively
+                if church.departments.filter(name__iexact=name).exists():
+                    errors.append(f"Department '{name}' is already registered.")
+                else:
+                    Department.objects.create(church=church, name=name)
+                    logger.info(f"Department created: '{name}' for church '{church}' by owner '{request.user.username}'.")
+                    return redirect("attendance:owner_departments")
+            except Exception as e:
+                logger.exception(f"Failed to create department '{name}' for church '{church}': {e}")
+                errors.append(f"Error saving department: {e}")
+
+    departments = church.departments.annotate(
+        member_count=Count("members", filter=Q(members__is_active=True))
+    ).order_by("name")
+
+    return render(request, "owner/departments.html", {
+        "owner": owner,
+        "departments": departments,
+        "errors": errors,
+    })
+
+
+@owner_required
+@require_POST
+def owner_delete_department(request, dept_id):
+    """Deletes a department."""
+    owner = request.user.church_owner
+    church = owner.church
+    
+    dept = get_object_or_404(Department, id=dept_id, church=church)
+    dept_name = dept.name
+    dept.delete()
+    logger.warning(f"Department deleted: '{dept_name}' from church '{church}' by owner '{request.user.username}'.")
+
+    return redirect("attendance:owner_departments")
+
+
+@owner_required
+def owner_edit_department(request, dept_id):
+    """Allows the church owner to rename a department."""
+    owner = request.user.church_owner
+    church = owner.church
+
+    dept = get_object_or_404(Department, id=dept_id, church=church)
+    errors = []
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+
+        if not name:
+            errors.append("Department name is required.")
+        else:
+            try:
+                if church.departments.filter(name__iexact=name).exclude(id=dept_id).exists():
+                    errors.append(f"Department '{name}' is already registered.")
+                else:
+                    old_name = dept.name
+                    dept.name = name
+                    dept.save()
+                    logger.info(f"Department updated: '{old_name}' → '{name}' by owner '{request.user.username}'.")
+                    return redirect("attendance:owner_departments")
+            except Exception as e:
+                logger.exception(f"Failed to update department (ID:{dept_id}): {e}")
+                errors.append(f"Error updating department: {e}")
+
+    return render(request, "owner/edit_department.html", {
+        "owner": owner,
+        "dept": dept,
+        "errors": errors,
+        "form_data": {"name": dept.name}
+    })
 
 # ---------------------------------------------------------------------------
 # CSV Export (Phase 4.4)

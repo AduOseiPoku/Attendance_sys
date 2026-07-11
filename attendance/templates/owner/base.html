@@ -255,6 +255,10 @@
          class="nav-link {% if request.resolver_match.url_name == 'owner_members' %}active{% endif %}">
         <span class="nav-icon">👥</span> Members
       </a>
+      <a href="{% url 'attendance:owner_departments' %}"
+         class="nav-link {% if request.resolver_match.url_name == 'owner_departments' or request.resolver_match.url_name == 'owner_edit_department' %}active{% endif %}">
+        <span class="nav-icon">🏢</span> Departments
+      </a>
       {% if owner.church.is_student_church %}
       <a href="{% url 'attendance:owner_graduation_years' %}"
          class="nav-link {% if request.resolver_match.url_name == 'owner_graduation_years' %}active{% endif %}">

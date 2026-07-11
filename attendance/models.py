@@ -58,6 +58,32 @@ class GraduationYear(models.Model):
         return f"{self.year} (Ends: {self.completion_date})"
 
 
+class Department(models.Model):
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="departments"
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Name of the department/ministry (e.g. Choir, Media)"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["church", "name"],
+                name="unique_church_department"
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
 class Member(models.Model):
     uuid = models.UUIDField(
         default=uuid.uuid4,
@@ -104,10 +130,13 @@ class Member(models.Model):
     )
 
     # Optional church ministry/department
-    department = models.CharField(
-        max_length=100,
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        null=True
+        related_name="members",
+        help_text="The member's department or ministry."
     )
 
     # Soft-delete flag — inactive members are hidden from rosters but retain their attendance history

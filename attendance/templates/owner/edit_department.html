@@ -1,6 +1,6 @@
 {% extends "owner/base.html" %}
-{% block title %}Edit Member — {{ member.name }}{% endblock %}
-{% block page_title %}Edit Member{% endblock %}
+{% block title %}Edit Department — {{ dept.name }}{% endblock %}
+{% block page_title %}Edit Department{% endblock %}
 
 {% block extra_styles %}
 <style>
@@ -23,18 +23,17 @@
   }
   .form-group label .required { color: var(--red); margin-left: 2px; }
   
-  .form-input, .form-textarea {
+  .form-input {
     width: 100%; padding: 12px 14px;
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 10px; color: var(--text);
     font-family: 'Inter', sans-serif; font-size: 14px;
     transition: border-color .2s, box-shadow .2s; outline: none;
   }
-  .form-input:focus, .form-textarea:focus {
+  .form-input:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(108, 99, 255, .15);
   }
-  .form-textarea { resize: vertical; min-height: 90px; }
   
   .form-actions {
     display: flex; align-items: center; gap: 12px;
@@ -70,8 +69,8 @@
 {% block content %}
 <div class="form-card">
   <div class="form-header">
-    <h3>✏️ Edit Member</h3>
-    <p>Update the profile details for {{ member.name }}.</p>
+    <h3>✏️ Edit Department</h3>
+    <p>Update the name for {{ dept.name }}.</p>
   </div>
 
   {% if errors %}
@@ -88,59 +87,16 @@
     {% csrf_token %}
 
     <div class="form-group">
-      <label>Full Name <span class="required">*</span></label>
-      <input type="text" name="name" class="form-input"
+      <label for="name">Department Name <span class="required">*</span></label>
+      <input type="text" id="name" name="name" class="form-input"
              value="{{ form_data.name }}" required autofocus />
     </div>
-
-    <div class="form-group">
-      <label>Phone Number <span class="required">*</span></label>
-      <input type="tel" name="phone_number" class="form-input"
-             value="{{ form_data.phone_number }}" required />
-    </div>
-
-    <div class="form-group">
-      <label>Emergency Phone Number</label>
-      <input type="tel" name="emergency_phone_number" class="form-input"
-             value="{{ form_data.emergency_phone_number }}" />
-    </div>
-
-    <div class="form-group">
-      <label>Address</label>
-      <textarea name="address" class="form-textarea">{{ form_data.address }}</textarea>
-    </div>
-
-    <div class="form-group">
-      <label>Department / Ministry</label>
-      <select name="department" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;">
-        <option value="">-- None --</option>
-        {% for dept in departments %}
-          <option value="{{ dept.id }}" {% if dept.id|slugify == form_data.department_id|slugify %}selected{% endif %}>
-            {{ dept.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    {% if owner.church.is_student_church %}
-    <div class="form-group">
-      <label>Graduation Year</label>
-      <select name="graduation_year" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;">
-        <option value="">-- Select Year --</option>
-        {% for cohort in graduation_years %}
-          <option value="{{ cohort.id }}" {% if cohort.id|slugify == form_data.graduation_year_id|slugify %}selected{% endif %}>
-            {{ cohort.year }} (Ends: {{ cohort.completion_date }})
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-    {% endif %}
 
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">
         <span>💾</span> Save Changes
       </button>
-      <a href="{% url 'attendance:owner_members' %}" class="btn btn-ghost">Cancel</a>
+      <a href="{% url 'attendance:owner_departments' %}" class="btn btn-ghost">Cancel</a>
     </div>
   </form>
 </div>

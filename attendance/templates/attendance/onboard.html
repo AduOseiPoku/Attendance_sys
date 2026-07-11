@@ -42,8 +42,12 @@
 
   <div class="form-group">
     <label for="department">Department (optional)</label>
-    <input type="text" id="department" name="department" class="form-input"
-           placeholder="e.g., Youth, Choir, Ushering">
+    <select id="department" name="department" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;">
+      <option value="">-- None --</option>
+      {% for dept in departments %}
+        <option value="{{ dept.id }}">{{ dept.name }}</option>
+      {% endfor %}
+    </select>
   </div>
 
   {% if event.church.is_student_church %}
