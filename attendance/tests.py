@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import AttendanceLog, Event, Member, Church, ChurchOwner
+from .models import AttendanceLog, Event, Member, Church, ChurchOwner, Department
 
 # Minimal in-memory templates so assertTemplateUsed works during tests
 LOC_MEM_TEMPLATES = {
@@ -22,14 +22,12 @@ LOC_MEM_TEMPLATES = {
 # -------------------------
 class MemberModelTests(TestCase):
     def test_member_str_representation(self):
+        church = Church.objects.create(name="Test Church")
+        dept = Department.objects.create(name="Choir", church=church)
         member = Member.objects.create(
-            name="John Doe",
-            phone_number="+233500000001",
-            emergency_phone_number="+233500000099",
-            address="Accra",
-            department="Choir",
+            name="John Doe", phone_number="1234567890", department=dept
         )
-        self.assertEqual(str(member), "John Doe (+233500000001)")
+        self.assertEqual(str(member), "John Doe (1234567890)")
 
     def test_member_ordering_by_name_ascending(self):
         Member.objects.create(
@@ -293,13 +291,17 @@ def make_owner(username="pastor", password="TestPass123", church_name="Test Chur
 
 def make_member(name, phone, church=None, department=None):
     """Helper: create a Member linked to a church."""
+    dept_obj = None
+    if department and church:
+        dept_obj, _ = Department.objects.get_or_create(church=church, name=department)
+
     return Member.objects.create(
         name=name,
         phone_number=phone,
         church=church,
         emergency_phone_number="000",
         address="Test Address",
-        department=department,
+        department=dept_obj,
     )
 
 
@@ -574,7 +576,8 @@ class OwnerMembersViewTests(TestCase):
         self.assertEqual(len(response.context["members"].object_list), 0)
 
     def test_department_filter(self):
-        response = self.client.get(reverse("attendance:owner_members") + "?department=Choir")
+        choir = Department.objects.get(name="Choir", church=self.church)
+        response = self.client.get(reverse("attendance:owner_members") + f"?department={choir.id}")
         self.assertEqual(response.status_code, 200)
         members = response.context["members"].object_list
         names = [m.name for m in members]
@@ -585,8 +588,9 @@ class OwnerMembersViewTests(TestCase):
     def test_department_dropdown_contains_distinct_values(self):
         response = self.client.get(reverse("attendance:owner_members"))
         depts = list(response.context["departments"])
-        self.assertIn("Choir",  depts)
-        self.assertIn("Ushers", depts)
+        dept_names = [d.name for d in depts]
+        self.assertIn("Choir",  dept_names)
+        self.assertIn("Ushers", dept_names)
         self.assertEqual(len(depts), 2)  # no duplicates
 
     def test_members_sorted_by_attendance_descending(self):
@@ -597,7 +601,8 @@ class OwnerMembersViewTests(TestCase):
         self.assertEqual(members[0].name, "Alice Mensah")
 
     def test_combined_search_and_department_filter(self):
-        response = self.client.get(reverse("attendance:owner_members") + "?search=carol&department=Choir")
+        choir = Department.objects.get(name="Choir", church=self.church)
+        response = self.client.get(reverse("attendance:owner_members") + f"?search=carol&department={choir.id}")
         self.assertEqual(response.status_code, 200)
         members = response.context["members"].object_list
         self.assertEqual(len(members), 1)

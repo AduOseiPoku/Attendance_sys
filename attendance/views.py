@@ -130,7 +130,9 @@ def onboard_member(request, event_uuid):
     if church and church.is_student_church:
         graduation_years = church.graduation_years.all()
 
-    departments = church.departments.all()
+    departments = []
+    if church:
+        departments = church.departments.all()
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -148,7 +150,7 @@ def onboard_member(request, event_uuid):
                 graduation_year = None
 
         department = None
-        if department_id:
+        if church and department_id:
             try:
                 department = church.departments.get(id=department_id)
             except (ValueError, TypeError, Department.DoesNotExist):
@@ -346,7 +348,7 @@ def owner_members(request):
     church = owner.church
 
     search             = request.GET.get("search", "").strip()
-    department         = request.GET.get("department", "").strip()
+    department_id      = request.GET.get("department", "").strip()
     graduation_year_id = request.GET.get("graduation_year", "").strip()
 
     members_qs = (
@@ -361,8 +363,8 @@ def owner_members(request):
             Q(name__icontains=search) | Q(phone_number__icontains=search)
         )
 
-    if department:
-        members_qs = members_qs.filter(department=department)
+    if department_id:
+        members_qs = members_qs.filter(department_id=department_id)
 
     if graduation_year_id:
         members_qs = members_qs.filter(graduation_year_id=graduation_year_id)
@@ -373,15 +375,8 @@ def owner_members(request):
     paginator = Paginator(members_qs, 50)
     page_obj  = paginator.get_page(request.GET.get("page"))
 
-    # Populate the department dropdown with all distinct non-null department values
-    departments = (
-        Member.objects.filter(church=church, is_active=True)
-        .exclude(department__isnull=True)
-        .exclude(department="")
-        .values_list("department", flat=True)
-        .distinct()
-        .order_by("department")
-    )
+    # Populate the department dropdown with actual departments
+    departments = church.departments.all()
 
     graduation_years = []
     if church.is_student_church:
@@ -395,7 +390,7 @@ def owner_members(request):
         "departments":        departments,
         "graduation_years":   graduation_years,
         "search":             search,
-        "department":         department,
+        "department_id":      department_id,
         "graduation_year_id": graduation_year_id,
         "total_events":       Event.objects.filter(church=church).count(),
     }

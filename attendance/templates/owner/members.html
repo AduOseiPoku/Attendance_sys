@@ -178,8 +178,8 @@
     <select name="department" class="dept-select" id="dept-filter">
       <option value="">All Departments</option>
       {% for dept in departments %}
-        <option value="{{ dept }}" {% if dept == department %}selected{% endif %}>
-          {{ dept }}
+        <option value="{{ dept.id }}" {% if dept.id|slugify == department_id|slugify %}selected{% endif %}>
+          {{ dept.name }}
         </option>
       {% endfor %}
     </select>
@@ -198,7 +198,7 @@
 
     <button type="submit" class="filter-submit">Filter</button>
 
-    {% if search or department %}
+    {% if search or department_id %}
     <a href="{% url 'attendance:owner_members' %}" class="clear-btn">✕ Clear</a>
     {% endif %}
   </div>
@@ -207,7 +207,7 @@
 <p class="results-info">
   Showing <strong style="color:var(--text);">{{ members|length }}</strong> member{% if members|length != 1 %}s{% endif %}
   {% if search %}matching "<strong style="color:var(--text);">{{ search }}</strong>"{% endif %}
-  {% if department %}in <strong style="color:var(--text);">{{ department }}</strong>{% endif %}
+  {% if department_id %}in selected department{% endif %}
 </p>
 
 <!-- Members Table -->
@@ -242,7 +242,7 @@
         {% endif %}
         <td>
           {% if member.department %}
-            <span class="badge" style="background:rgba(255,255,255,.05); color:var(--muted);">{{ member.department }}</span>
+            <span class="badge" style="background:rgba(255,255,255,.05); color:var(--muted);">{{ member.department.name }}</span>
           {% else %}
             <span style="color:var(--border); font-size:12px;">—</span>
           {% endif %}

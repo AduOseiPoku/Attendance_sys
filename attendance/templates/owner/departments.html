@@ -140,6 +140,7 @@
             </span>
           </td>
           <td style="text-align:right; display:flex; justify-content:flex-end; gap:12px; align-items:center; border-bottom: 1px solid var(--border);">
+            <a href="{% url 'attendance:owner_members' %}?department={{ dept.id }}" class="link-accent" style="font-size:12px;">View Members</a>
             <a href="{% url 'attendance:owner_edit_department' dept.id %}" class="link-accent" style="font-size:12px;">Edit</a>
             <form method="POST" action="{% url 'attendance:owner_delete_department' dept.id %}" onsubmit="return confirm('Are you sure you want to delete this department? Members in this group will lose their department assignment.')" style="margin:0;">
               {% csrf_token %}
