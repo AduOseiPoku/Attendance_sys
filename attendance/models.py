@@ -145,6 +145,11 @@ class Member(models.Model):
         db_index=True
     )
 
+    is_visitor = models.BooleanField(
+        default=False,
+        help_text="Checked if the member is just visiting and not a permanent member."
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )

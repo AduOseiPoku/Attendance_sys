@@ -111,7 +111,11 @@ def scan_landing(request, event_uuid):
                 })
 
         # Scenario 3: Complete Stranger -> Route directly to Onboarding
-        params = urlencode({"name": name, "phone": phone})
+        is_visitor = request.POST.get("is_visitor") == "on"
+        params_dict = {"name": name, "phone": phone}
+        if is_visitor:
+            params_dict["is_visitor"] = "true"
+        params = urlencode(params_dict)
         return redirect(f"{reverse('attendance:onboard_member', args=[event.uuid])}?{params}")
 
     return render(request, "attendance/scan_landing.html", {"event": event})
@@ -125,6 +129,7 @@ def onboard_member(request, event_uuid):
 
     suggested_name = request.GET.get("name", "")
     suggested_phone = normalize_phone(request.GET.get("phone", ""))
+    is_visitor_get = request.GET.get("is_visitor") == "true"
 
     graduation_years = []
     if church and church.is_student_church:
@@ -140,6 +145,7 @@ def onboard_member(request, event_uuid):
         emergency_phone_number = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address = request.POST.get("address", "").strip()
         department_id = request.POST.get("department")
+        is_visitor = request.POST.get("is_visitor") == "on"
         
         graduation_year_id = request.POST.get("graduation_year")
         graduation_year = None
@@ -165,7 +171,8 @@ def onboard_member(request, event_uuid):
                     "emergency_phone_number": emergency_phone_number,
                     "address": address,
                     "department": department,
-                    "graduation_year": graduation_year
+                    "graduation_year": graduation_year,
+                    "is_visitor": is_visitor
                 }
             )
             
@@ -201,6 +208,7 @@ def onboard_member(request, event_uuid):
         "event": event,
         "suggested_name": suggested_name,
         "suggested_phone": suggested_phone,
+        "is_visitor_get": is_visitor_get,
         "graduation_years": graduation_years,
         "departments": departments,
     })

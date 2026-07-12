@@ -62,6 +62,10 @@
   </div>
   {% endif %}
 
+  {% if is_visitor_get %}
+  <input type="hidden" name="is_visitor" value="on">
+  {% endif %}
+
   <button type="submit" class="btn btn-primary" style="margin-top:24px;">
     Complete Registration →
   </button>
