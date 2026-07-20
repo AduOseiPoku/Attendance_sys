@@ -44,6 +44,10 @@ class GraduationYear(models.Model):
     completion_date = models.DateField(
         help_text="The date when members of this class complete school."
     )
+    is_graduated = models.BooleanField(
+        default=False,
+        help_text="Mark this cohort as graduated to hide it from new registrations."
+    )
 
     class Meta:
         ordering = ["completion_date"]

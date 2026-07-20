@@ -133,7 +133,7 @@ def onboard_member(request, event_uuid):
 
     graduation_years = []
     if church and church.is_student_church:
-        graduation_years = church.graduation_years.all()
+        graduation_years = church.graduation_years.filter(is_graduated=False)
 
     departments = []
     if church:
@@ -206,6 +206,89 @@ def onboard_member(request, event_uuid):
 
     return render(request, "attendance/onboard.html", {
         "event": event,
+        "suggested_name": suggested_name,
+        "suggested_phone": suggested_phone,
+        "is_visitor_get": is_visitor_get,
+        "graduation_years": graduation_years,
+        "departments": departments,
+    })
+
+
+@ratelimit(key='ip', rate='10/m', method='POST', block=True)
+def onboard_church_member(request, church_uuid):
+    """Registers a new member for a church without an active event."""
+    church = get_object_or_404(Church, uuid=church_uuid)
+
+    suggested_name = request.GET.get("name", "")
+    suggested_phone = normalize_phone(request.GET.get("phone", ""))
+    is_visitor_get = request.GET.get("is_visitor") == "true"
+
+    graduation_years = []
+    if church.is_student_church:
+        graduation_years = church.graduation_years.filter(is_graduated=False)
+
+    departments = church.departments.all()
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        phone_number = normalize_phone(request.POST.get("phone_number", ""))
+        emergency_phone_number = normalize_phone(request.POST.get("emergency_phone_number", ""))
+        address = request.POST.get("address", "").strip()
+        department_id = request.POST.get("department")
+        is_visitor = request.POST.get("is_visitor") == "on"
+        
+        graduation_year_id = request.POST.get("graduation_year")
+        graduation_year = None
+        if church.is_student_church and graduation_year_id:
+            try:
+                graduation_year = church.graduation_years.get(id=graduation_year_id)
+            except (ValueError, TypeError, GraduationYear.DoesNotExist):
+                graduation_year = None
+
+        department = None
+        if department_id:
+            try:
+                department = church.departments.get(id=department_id)
+            except (ValueError, TypeError, Department.DoesNotExist):
+                department = None
+
+        try:
+            member, created = Member.objects.get_or_create(
+                church=church,
+                phone_number=phone_number,
+                defaults={
+                    "name": name,
+                    "emergency_phone_number": emergency_phone_number,
+                    "address": address,
+                    "department": department,
+                    "graduation_year": graduation_year,
+                    "is_visitor": is_visitor
+                }
+            )
+            
+            if created:
+                logger.info(f"Onboard: New member '{name}' registered for church '{church.name}'.")
+            else:
+                logger.info(f"Onboard: Returning member '{member.name}' attempted registration for church '{church.name}'.")
+
+            return render(request, "attendance/success_church.html", {
+                "message": f"Registration successful! Welcome to {church.name}.",
+                "church": church,
+            })
+
+        except IntegrityError:
+            logger.warning(f"Onboard: Duplicate phone '{phone_number}' attempted for church '{church.name}'.")
+            return render(request, "attendance/onboard_church_member.html", {
+                "church": church,
+                "error": "This phone number is already registered to another member.",
+                "suggested_name": name,
+                "suggested_phone": request.POST.get("phone_number", ""),
+                "graduation_years": graduation_years,
+                "departments": departments,
+            })
+
+    return render(request, "attendance/onboard_church_member.html", {
+        "church": church,
         "suggested_name": suggested_name,
         "suggested_phone": suggested_phone,
         "is_visitor_get": is_visitor_get,
@@ -870,6 +953,7 @@ def owner_edit_graduation_year(request, year_id):
     if request.method == "POST":
         year_str = request.POST.get("year", "").strip()
         completion_date_str = request.POST.get("completion_date", "").strip()
+        is_graduated = request.POST.get("is_graduated") == "on"
 
         if not year_str or not completion_date_str:
             errors.append("Both year/class name and completion date are required.")
@@ -882,8 +966,9 @@ def owner_edit_graduation_year(request, year_id):
                     old_label = cohort.year
                     cohort.year = year_str
                     cohort.completion_date = completion_date_str
+                    cohort.is_graduated = is_graduated
                     cohort.save()
-                    logger.info(f"Cohort updated: '{old_label}' → '{year_str}' (completion: {completion_date_str}) by owner '{request.user.username}'.")
+                    logger.info(f"Cohort updated: '{old_label}' → '{year_str}' (completion: {completion_date_str}, graduated: {is_graduated}) by owner '{request.user.username}'.")
                     return redirect("attendance:owner_graduation_years")
             except Exception as e:
                 logger.exception(f"Failed to update cohort (ID:{year_id}): {e}")
@@ -891,7 +976,8 @@ def owner_edit_graduation_year(request, year_id):
 
     form_data = {
         "year": cohort.year,
-        "completion_date": cohort.completion_date.strftime("%Y-%m-%d") if cohort.completion_date else ""
+        "completion_date": cohort.completion_date.strftime("%Y-%m-%d") if cohort.completion_date else "",
+        "is_graduated": cohort.is_graduated
     }
 
     return render(request, "owner/edit_graduation_year.html", {

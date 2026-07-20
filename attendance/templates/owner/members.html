@@ -160,6 +160,38 @@
 
 {% block content %}
 
+<!-- Church Member Onboarding Link -->
+<div class="card" style="margin-bottom: 24px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-left: 4px solid var(--accent);">
+  <div>
+    <h3 style="font-size: 15px; margin-bottom: 4px; color: var(--text);">Member Registration Link</h3>
+    <p style="font-size: 13px; color: var(--muted); margin: 0;">Share this link to allow members to register to your church anytime.</p>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <input type="text" id="onboard-url" readonly class="form-input" style="font-size: 12px; padding: 8px 12px; min-width: 250px; cursor: pointer; border-radius: 6px;" value="">
+    <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; border-radius: 6px; white-space: nowrap;" onclick="copyOnboardLink()">Copy Link</button>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var urlInput = document.getElementById('onboard-url');
+    var baseUrl = window.location.protocol + "//" + window.location.host;
+    var path = "{% url 'attendance:onboard_church_member' owner.church.uuid %}";
+    urlInput.value = baseUrl + path;
+  });
+
+  function copyOnboardLink() {
+    var copyText = document.getElementById("onboard-url");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); 
+    navigator.clipboard.writeText(copyText.value).then(function() {
+      alert("Registration link copied to clipboard!");
+    }).catch(function() {
+      alert("Copied registration link: " + copyText.value);
+    });
+  }
+</script>
+
 <!-- Filter Bar -->
 <form method="GET" id="filter-form">
   <div class="filter-bar">
@@ -190,7 +222,7 @@
       <option value="">All Classes</option>
       {% for cohort in graduation_years %}
         <option value="{{ cohort.id }}" {% if cohort.id|slugify == graduation_year_id|slugify %}selected{% endif %}>
-          {{ cohort.year }}
+          {{ cohort.year }} {% if cohort.is_graduated %}(Graduated){% endif %}
         </option>
       {% endfor %}
     </select>

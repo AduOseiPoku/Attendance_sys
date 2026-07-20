@@ -12,6 +12,7 @@ urlpatterns = [
     # --- Member-facing check-in flows ---
     path('scan/<uuid:event_uuid>/', views.scan_landing, name='scan_landing'),
     path('onboard/<uuid:event_uuid>/', views.onboard_member, name='onboard_member'),
+    path('church/<uuid:church_uuid>/onboard/', views.onboard_church_member, name='onboard_church_member'),
 
     # Unified resolution endpoint handling both name and phone suggestion forms securely
     path('confirm/<uuid:event_uuid>/<uuid:member_uuid>/', views.confirm_identity, name='confirm_identity'),

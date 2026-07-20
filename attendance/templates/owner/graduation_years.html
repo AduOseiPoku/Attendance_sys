@@ -138,7 +138,16 @@
       <tbody>
         {% for cohort in graduation_years %}
         <tr>
-          <td style="font-weight: 600;">{{ cohort.year }}</td>
+          {% if cohort.is_graduated %}
+          <td style="font-weight: 600; color: var(--muted);">
+          {% else %}
+          <td style="font-weight: 600;">
+          {% endif %}
+            {{ cohort.year }}
+            {% if cohort.is_graduated %}
+            <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--muted); font-size: 10px; margin-left: 6px;">Graduated</span>
+            {% endif %}
+          </td>
           <td style="color: var(--muted);">{{ cohort.completion_date|date:"F d, Y" }}</td>
           <td>
             <span class="badge" style="background: rgba(108,99,255,0.1); color: var(--accent);">

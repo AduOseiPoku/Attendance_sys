@@ -1,0 +1,18 @@
+{% extends "attendance/member_base.html" %}
+{% block title %}Registration Successful{% endblock %}
+
+{% block content %}
+<div style="text-align:center;">
+  <div class="icon-badge icon-badge-green" style="font-size:32px; margin-bottom:20px;">✓</div>
+  <h2>Success!</h2>
+  <p class="subtitle" style="margin-top:10px;">{{ message }}</p>
+
+  {% if church %}
+  <a href="{% url 'attendance:church_events' church.uuid %}"
+     class="btn btn-ghost"
+     style="max-width:260px; margin: 28px auto 0;">
+    ← Back to {{ church.name }} Events
+  </a>
+  {% endif %}
+</div>
+{% endblock %}

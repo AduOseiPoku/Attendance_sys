@@ -98,6 +98,13 @@
              value="{{ form_data.completion_date }}" required />
     </div>
 
+    <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+      <input type="checkbox" id="is_graduated" name="is_graduated" {% if form_data.is_graduated %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;" />
+      <label for="is_graduated" style="margin: 0; text-transform: none; font-size: 14px; color: var(--text); cursor: pointer;">
+        Mark as Graduated <span style="display: block; font-size: 12px; color: var(--muted); font-weight: normal; margin-top: 2px;">Graduated cohorts will be hidden from new member registrations.</span>
+      </label>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">
         <span>💾</span> Save Changes

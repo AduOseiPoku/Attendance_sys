@@ -1,0 +1,73 @@
+{% extends "attendance/member_base.html" %}
+{% block title %}Church Member Registration{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <h2>Register with {{ church.name }}</h2>
+  <p class="subtitle">Please fill in your details to register as a member.</p>
+</div>
+
+{% if error %}
+<div class="alert alert-error">⚠️ {{ error }}</div>
+{% endif %}
+
+<form method="POST">
+  {% csrf_token %}
+
+  <div class="form-group">
+    <label for="name">Full Name <span style="color:var(--red);">*</span></label>
+    <input type="text" id="name" name="name" class="form-input"
+           placeholder="John Doe"
+           value="{{ suggested_name|default:'' }}" required>
+  </div>
+
+  <div class="form-group">
+    <label for="phone_number">Phone Number <span style="color:var(--red);">*</span></label>
+    <input type="tel" id="phone_number" name="phone_number" class="form-input"
+           placeholder="e.g., +233501234567"
+           value="{{ suggested_phone|default:'' }}" required>
+  </div>
+
+  <div class="form-group">
+    <label for="emergency_phone_number">Emergency Contact (optional)</label>
+    <input type="tel" id="emergency_phone_number" name="emergency_phone_number" class="form-input"
+           placeholder="Emergency contact number">
+  </div>
+
+  <div class="form-group">
+    <label for="address">Residential Address (optional)</label>
+    <textarea id="address" name="address" rows="3" class="form-textarea"
+              placeholder="Enter your physical or digital address"></textarea>
+  </div>
+
+  <div class="form-group">
+    <label for="department">Department (optional)</label>
+    <select id="department" name="department" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;">
+      <option value="">-- None --</option>
+      {% for dept in departments %}
+        <option value="{{ dept.id }}">{{ dept.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if church.is_student_church %}
+  <div class="form-group">
+    <label for="graduation_year">Graduation Year <span style="color:var(--red);">*</span></label>
+    <select id="graduation_year" name="graduation_year" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;" required>
+      <option value="">-- Select Year --</option>
+      {% for cohort in graduation_years %}
+        <option value="{{ cohort.id }}">{{ cohort.year }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if is_visitor_get %}
+  <input type="hidden" name="is_visitor" value="on">
+  {% endif %}
+
+  <button type="submit" class="btn btn-primary" style="margin-top:24px;">
+    Complete Registration →
+  </button>
+</form>
+{% endblock %}
