@@ -31,35 +31,35 @@ class Church(models.Model):
         return self.name
 
 
-class GraduationYear(models.Model):
+class AcademicLevel(models.Model):
     church = models.ForeignKey(
         Church,
         on_delete=models.CASCADE,
-        related_name="graduation_years"
+        related_name="academic_levels"
     )
-    year = models.CharField(
+    name = models.CharField(
         max_length=100,
-        help_text="e.g., Year 1, Year 2, Class of 2028"
+        help_text="e.g., Year 1, Year 2, Level 100"
     )
-    completion_date = models.DateField(
-        help_text="The date when members of this class complete school."
-    )
-    is_graduated = models.BooleanField(
-        default=False,
-        help_text="Mark this cohort as graduated to hide it from new registrations."
+    sequence_order = models.PositiveIntegerField(
+        help_text="Order of progression. Higher number means closer to graduation (e.g., 1, 2, 3)."
     )
 
     class Meta:
-        ordering = ["completion_date"]
+        ordering = ["sequence_order"]
         constraints = [
             models.UniqueConstraint(
-                fields=["church", "year"],
-                name="unique_church_graduation_year"
+                fields=["church", "name"],
+                name="unique_church_academic_level"
+            ),
+            models.UniqueConstraint(
+                fields=["church", "sequence_order"],
+                name="unique_church_academic_sequence"
             )
         ]
 
     def __str__(self):
-        return f"{self.year} (Ends: {self.completion_date})"
+        return f"{self.name} (Order: {self.sequence_order})"
 
 
 class Department(models.Model):
@@ -101,13 +101,13 @@ class Member(models.Model):
         null=True,
         blank=True
     )
-    graduation_year = models.ForeignKey(
-        GraduationYear,
+    academic_level = models.ForeignKey(
+        AcademicLevel,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="members",
-        help_text="The student's graduation cohort."
+        help_text="The student's current academic level."
     )
 
     # Optimized for name lookups
@@ -175,6 +175,43 @@ class Member(models.Model):
         if self.church:
             return f"{self.name} ({self.phone_number}) - {self.church.name}"
         return f"{self.name} ({self.phone_number})"
+
+
+class Alumni(models.Model):
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False
+    )
+    church = models.ForeignKey(
+        Church,
+        on_delete=models.CASCADE,
+        related_name="alumni"
+    )
+    name = models.CharField(max_length=100, db_index=True)
+    phone_number = models.CharField(max_length=20, db_index=True)
+    emergency_phone_number = models.CharField(max_length=20, blank=True, default='')
+    address = models.TextField(blank=True, default='')
+    
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="alumni",
+        help_text="The member's former department or ministry."
+    )
+    
+    # Track when they originally joined, and when they graduated
+    member_since = models.DateTimeField(null=True, blank=True)
+    graduated_on = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-graduated_on", "name"]
+        verbose_name_plural = "Alumni"
+
+    def __str__(self):
+        return f"{self.name} - Graduated {self.graduated_on.strftime('%Y-%m-%d')}"
 
 
 class Event(models.Model):
