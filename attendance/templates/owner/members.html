@@ -216,13 +216,13 @@
       {% endfor %}
     </select>
 
-    <!-- Graduation Year Dropdown -->
+    <!-- Academic Level Dropdown -->
     {% if owner.church.is_student_church %}
-    <select name="graduation_year" class="dept-select" id="grad-year-filter">
+    <select name="academic_level" class="dept-select" id="grad-year-filter">
       <option value="">All Classes</option>
-      {% for cohort in graduation_years %}
-        <option value="{{ cohort.id }}" {% if cohort.id|slugify == graduation_year_id|slugify %}selected{% endif %}>
-          {{ cohort.year }} {% if cohort.is_graduated %}(Graduated){% endif %}
+      {% for cohort in academic_levels %}
+        <option value="{{ cohort.id }}" {% if cohort.id|slugify == academic_level_id|slugify %}selected{% endif %}>
+          {{ cohort.name }} {% if cohort.is_graduated %}(Graduated){% endif %}
         </option>
       {% endfor %}
     </select>
@@ -250,7 +250,7 @@
         <th>Name</th>
         <th>Phone</th>
         {% if owner.church.is_student_church %}
-        <th>Graduation Class</th>
+        <th>Academic Level</th>
         {% endif %}
         <th>Department</th>
         <th>Check-ins</th>
@@ -265,8 +265,8 @@
         <td style="color:var(--muted); font-size:13px;">{{ member.phone_number }}</td>
         {% if owner.church.is_student_church %}
         <td>
-          {% if member.graduation_year %}
-            <span class="badge badge-blue">{{ member.graduation_year.year }}</span>
+          {% if member.academic_level %}
+            <span class="badge badge-blue">{{ member.academic_level.name }}</span>
           {% else %}
             <span style="color:var(--border); font-size:12px;">—</span>
           {% endif %}

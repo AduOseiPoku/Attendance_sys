@@ -124,11 +124,11 @@
 
     {% if owner.church.is_student_church %}
     <div class="form-group">
-      <label>Graduation Year</label>
-      <select name="graduation_year" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;">
+      <label>Academic Level</label>
+      <select name="academic_level" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;">
         <option value="">-- Select Year --</option>
-        {% for cohort in graduation_years %}
-          <option value="{{ cohort.id }}" {% if cohort.id|slugify == form_data.graduation_year_id|slugify %}selected{% endif %}>
+        {% for cohort in academic_levels %}
+          <option value="{{ cohort.id }}" {% if cohort.id|slugify == form_data.academic_level_id|slugify %}selected{% endif %}>
             {{ cohort.year }} (Ends: {{ cohort.completion_date }})
           </option>
         {% endfor %}

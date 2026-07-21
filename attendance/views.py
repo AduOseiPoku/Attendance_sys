@@ -15,7 +15,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
 # pyrefly: ignore [missing-import]
 from django_ratelimit.decorators import ratelimit
-from .models import Member, Event, AttendanceLog, ChurchOwner, Church, GraduationYear, Department
+from .models import Member, Event, AttendanceLog, ChurchOwner, Church, AcademicLevel, Alumni, Department
 from .decorators import owner_required
 
 logger = logging.getLogger(__name__)
@@ -131,9 +131,9 @@ def onboard_member(request, event_uuid):
     suggested_phone = normalize_phone(request.GET.get("phone", ""))
     is_visitor_get = request.GET.get("is_visitor") == "true"
 
-    graduation_years = []
+    academic_levels = []
     if church and church.is_student_church:
-        graduation_years = church.graduation_years.filter(is_graduated=False)
+        academic_levels = church.academic_levels.filter(is_graduated=False)
 
     departments = []
     if church:
@@ -147,13 +147,13 @@ def onboard_member(request, event_uuid):
         department_id = request.POST.get("department")
         is_visitor = request.POST.get("is_visitor") == "on"
         
-        graduation_year_id = request.POST.get("graduation_year")
-        graduation_year = None
-        if church and church.is_student_church and graduation_year_id:
+        academic_level_id = request.POST.get("academic_level")
+        academic_level = None
+        if church and church.is_student_church and academic_level_id:
             try:
-                graduation_year = church.graduation_years.get(id=graduation_year_id)
-            except (ValueError, TypeError, GraduationYear.DoesNotExist):
-                graduation_year = None
+                academic_level = church.academic_levels.get(id=academic_level_id)
+            except (ValueError, TypeError, AcademicLevel.DoesNotExist):
+                academic_level = None
 
         department = None
         if church and department_id:
@@ -171,7 +171,7 @@ def onboard_member(request, event_uuid):
                     "emergency_phone_number": emergency_phone_number,
                     "address": address,
                     "department": department,
-                    "graduation_year": graduation_year,
+                    "academic_level": academic_level,
                     "is_visitor": is_visitor
                 }
             )
@@ -200,7 +200,7 @@ def onboard_member(request, event_uuid):
                 "error": "This phone number is already registered to another member.",
                 "suggested_name": name,
                 "suggested_phone": request.POST.get("phone_number", ""),
-                "graduation_years": graduation_years,
+                "academic_levels": academic_levels,
                 "departments": departments,
             })
 
@@ -209,7 +209,7 @@ def onboard_member(request, event_uuid):
         "suggested_name": suggested_name,
         "suggested_phone": suggested_phone,
         "is_visitor_get": is_visitor_get,
-        "graduation_years": graduation_years,
+        "academic_levels": academic_levels,
         "departments": departments,
     })
 
@@ -223,9 +223,9 @@ def onboard_church_member(request, church_uuid):
     suggested_phone = normalize_phone(request.GET.get("phone", ""))
     is_visitor_get = request.GET.get("is_visitor") == "true"
 
-    graduation_years = []
+    academic_levels = []
     if church.is_student_church:
-        graduation_years = church.graduation_years.filter(is_graduated=False)
+        academic_levels = church.academic_levels.filter(is_graduated=False)
 
     departments = church.departments.all()
 
@@ -237,13 +237,13 @@ def onboard_church_member(request, church_uuid):
         department_id = request.POST.get("department")
         is_visitor = request.POST.get("is_visitor") == "on"
         
-        graduation_year_id = request.POST.get("graduation_year")
-        graduation_year = None
-        if church.is_student_church and graduation_year_id:
+        academic_level_id = request.POST.get("academic_level")
+        academic_level = None
+        if church.is_student_church and academic_level_id:
             try:
-                graduation_year = church.graduation_years.get(id=graduation_year_id)
-            except (ValueError, TypeError, GraduationYear.DoesNotExist):
-                graduation_year = None
+                academic_level = church.academic_levels.get(id=academic_level_id)
+            except (ValueError, TypeError, AcademicLevel.DoesNotExist):
+                academic_level = None
 
         department = None
         if department_id:
@@ -261,7 +261,7 @@ def onboard_church_member(request, church_uuid):
                     "emergency_phone_number": emergency_phone_number,
                     "address": address,
                     "department": department,
-                    "graduation_year": graduation_year,
+                    "academic_level": academic_level,
                     "is_visitor": is_visitor
                 }
             )
@@ -283,7 +283,7 @@ def onboard_church_member(request, church_uuid):
                 "error": "This phone number is already registered to another member.",
                 "suggested_name": name,
                 "suggested_phone": request.POST.get("phone_number", ""),
-                "graduation_years": graduation_years,
+                "academic_levels": academic_levels,
                 "departments": departments,
             })
 
@@ -292,7 +292,7 @@ def onboard_church_member(request, church_uuid):
         "suggested_name": suggested_name,
         "suggested_phone": suggested_phone,
         "is_visitor_get": is_visitor_get,
-        "graduation_years": graduation_years,
+        "academic_levels": academic_levels,
         "departments": departments,
     })
 
@@ -440,12 +440,12 @@ def owner_members(request):
 
     search             = request.GET.get("search", "").strip()
     department_id      = request.GET.get("department", "").strip()
-    graduation_year_id = request.GET.get("graduation_year", "").strip()
+    academic_level_id = request.GET.get("academic_level", "").strip()
 
     members_qs = (
         Member.objects
         .filter(church=church, is_active=True)
-        .select_related('church', 'graduation_year')
+        .select_related('church', 'academic_level')
         .annotate(total_attendances=Count("attendance_logs"))
     )
 
@@ -457,8 +457,8 @@ def owner_members(request):
     if department_id:
         members_qs = members_qs.filter(department_id=department_id)
 
-    if graduation_year_id:
-        members_qs = members_qs.filter(graduation_year_id=graduation_year_id)
+    if academic_level_id:
+        members_qs = members_qs.filter(academic_level_id=academic_level_id)
 
     members_qs = members_qs.order_by("-total_attendances")
 
@@ -469,9 +469,9 @@ def owner_members(request):
     # Populate the department dropdown with actual departments
     departments = church.departments.all()
 
-    graduation_years = []
+    academic_levels = []
     if church.is_student_church:
-        graduation_years = church.graduation_years.all()
+        academic_levels = church.academic_levels.all()
 
     context = {
         "owner":              owner,
@@ -479,10 +479,10 @@ def owner_members(request):
         "page_obj":           page_obj,
         "is_paginated":       page_obj.has_other_pages(),
         "departments":        departments,
-        "graduation_years":   graduation_years,
+        "academic_levels":   academic_levels,
         "search":             search,
         "department_id":      department_id,
-        "graduation_year_id": graduation_year_id,
+        "academic_level_id": academic_level_id,
         "total_events":       Event.objects.filter(church=church).count(),
     }
     return render(request, "owner/members.html", context)
@@ -782,9 +782,9 @@ def owner_edit_member(request, member_uuid):
     church = owner.church
     member = get_object_or_404(Member, uuid=member_uuid, church=church)
 
-    graduation_years = []
+    academic_levels = []
     if church and church.is_student_church:
-        graduation_years = church.graduation_years.all()
+        academic_levels = church.academic_levels.all()
         
     departments = church.departments.all()
 
@@ -794,14 +794,14 @@ def owner_edit_member(request, member_uuid):
         emergency_phone       = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address               = request.POST.get("address", "").strip()
         department_id         = request.POST.get("department")
-        graduation_year_id    = request.POST.get("graduation_year")
+        academic_level_id    = request.POST.get("academic_level")
 
-        graduation_year = None
-        if church and church.is_student_church and graduation_year_id:
+        academic_level = None
+        if church and church.is_student_church and academic_level_id:
             try:
-                graduation_year = church.graduation_years.get(id=graduation_year_id)
-            except (ValueError, TypeError, GraduationYear.DoesNotExist):
-                graduation_year = None
+                academic_level = church.academic_levels.get(id=academic_level_id)
+            except (ValueError, TypeError, AcademicLevel.DoesNotExist):
+                academic_level = None
 
         department = None
         if department_id:
@@ -819,13 +819,13 @@ def owner_edit_member(request, member_uuid):
         if errors:
             return render(request, "owner/edit_member.html", {
                 "owner": owner, "member": member, "errors": errors,
-                "graduation_years": graduation_years,
+                "academic_levels": academic_levels,
                 "departments": departments,
                 "form_data": {
                     "name": name, "phone_number": phone_number,
                     "emergency_phone_number": emergency_phone,
                     "address": address, "department_id": department_id,
-                    "graduation_year_id": graduation_year_id,
+                    "academic_level_id": academic_level_id,
                 },
             })
 
@@ -835,14 +835,14 @@ def owner_edit_member(request, member_uuid):
             member.emergency_phone_number = emergency_phone
             member.address               = address
             member.department            = department
-            member.graduation_year       = graduation_year
+            member.academic_level       = academic_level
             member.save()
             logger.info(f"Member updated: '{name}' (ID:{member.id}) by owner '{request.user.username}'.")
         except Exception as e:
             logger.exception(f"Failed to update member '{name}' (ID:{member.id}): {e}")
             return render(request, "owner/edit_member.html", {
                 "owner": owner, "member": member,
-                "graduation_years": graduation_years,
+                "academic_levels": academic_levels,
                 "errors": [f"Could not update member: {e}"],
             })
 
@@ -854,11 +854,11 @@ def owner_edit_member(request, member_uuid):
         "emergency_phone_number": member.emergency_phone_number,
         "address":                member.address,
         "department_id":          member.department_id,
-        "graduation_year_id":     member.graduation_year_id,
+        "academic_level_id":     member.academic_level_id,
     }
     return render(request, "owner/edit_member.html", {
         "owner": owner, "member": member, "form_data": form_data, 
-        "graduation_years": graduation_years, "departments": departments
+        "academic_levels": academic_levels, "departments": departments
     })
 
 
@@ -875,7 +875,7 @@ def owner_deactivate_member(request, member_uuid):
 
 
 @owner_required
-def owner_graduation_years(request):
+def owner_academic_levels(request):
     """Allows the church owner to view and configure graduation cohorts."""
     owner = request.user.church_owner
     church = owner.church
@@ -884,108 +884,70 @@ def owner_graduation_years(request):
     if not church.is_student_church:
         return redirect("attendance:owner_dashboard")
 
-    errors = []
-    if request.method == "POST":
-        year_str = request.POST.get("year", "").strip()
-        completion_date_str = request.POST.get("completion_date", "").strip()
+    STANDARD_LEVELS = [
+        {"id": "100", "name": "Level 100", "order": 1},
+        {"id": "200", "name": "Level 200", "order": 2},
+        {"id": "300", "name": "Level 300", "order": 3},
+        {"id": "400", "name": "Level 400", "order": 4},
+        {"id": "500", "name": "Level 500", "order": 5},
+        {"id": "600", "name": "Level 600", "order": 6},
+        {"id": "700", "name": "Level 700", "order": 7},
+    ]
 
-        if not year_str or not completion_date_str:
-            errors.append("Both year and completion date are required.")
+    errors = []
+    
+    # Get currently added levels by order to hide them in the form
+    existing_levels = set(church.academic_levels.values_list('sequence_order', flat=True))
+    available_levels = [lvl for lvl in STANDARD_LEVELS if lvl["order"] not in existing_levels]
+
+    if request.method == "POST":
+        selected_orders = request.POST.getlist("levels")
+        if not selected_orders:
+            errors.append("No levels selected.")
         else:
             try:
-                # Check for duplicate year label in this church case-insensitively
-                if church.graduation_years.filter(year__iexact=year_str).exists():
-                    errors.append(f"Graduation cohort '{year_str}' is already registered.")
-                else:
-                    GraduationYear.objects.create(
-                        church=church,
-                        year=year_str,
-                        completion_date=completion_date_str
-                    )
-                    logger.info(f"Cohort created: '{year_str}' (completion: {completion_date_str}) for church '{church}' by owner '{request.user.username}'.")
-                    return redirect("attendance:owner_graduation_years")
+                for order_str in selected_orders:
+                    order_int = int(order_str)
+                    level_dict = next((lvl for lvl in STANDARD_LEVELS if lvl["order"] == order_int), None)
+                    if level_dict and order_int not in existing_levels:
+                        AcademicLevel.objects.create(
+                            church=church,
+                            name=level_dict["name"],
+                            sequence_order=level_dict["order"]
+                        )
+                logger.info(f"Bulk levels added for church '{church}' by owner '{request.user.username}'.")
+                return redirect("attendance:owner_academic_levels")
             except Exception as e:
-                logger.exception(f"Failed to create cohort '{year_str}' for church '{church}': {e}")
-                errors.append(f"Error saving graduation year: {e}")
+                logger.exception(f"Failed to create levels for church '{church}': {e}")
+                errors.append(f"Error saving academic levels: {e}")
 
-    # Fetch active cohorts with annotate count of active students ordered by completion date
-    graduation_years = (
-        church.graduation_years
+    academic_levels = (
+        church.academic_levels
         .annotate(student_count=Count("members", filter=Q(members__is_active=True)))
-        .order_by("completion_date")
+        .order_by("sequence_order")
     )
 
-    return render(request, "owner/graduation_years.html", {
+    return render(request, "owner/academic_levels.html", {
         "owner": owner,
-        "graduation_years": graduation_years,
+        "academic_levels": academic_levels,
+        "available_levels": available_levels,
         "errors": errors,
     })
 
 
 @owner_required
 @require_POST
-def owner_delete_graduation_year(request, year_id):
-    """Deletes a graduation cohort."""
+def owner_delete_academic_level(request, year_id):
+    """Deletes an academic level."""
     owner = request.user.church_owner
     church = owner.church
     
-    # Ensure this cohort belongs to this church
-    cohort = get_object_or_404(GraduationYear, id=year_id, church=church)
-    cohort_label = cohort.year
-    cohort.delete()
-    logger.warning(f"Cohort deleted: '{cohort_label}' from church '{church}' by owner '{request.user.username}'.")
+    level = get_object_or_404(AcademicLevel, id=year_id, church=church)
+    level_label = level.name
+    level.delete()
+    logger.warning(f"Level deleted: '{level_label}' from church '{church}' by owner '{request.user.username}'.")
 
-    return redirect("attendance:owner_graduation_years")
-
-
-@owner_required
-def owner_edit_graduation_year(request, year_id):
-    """Allows the church owner to edit a cohort's name and completion date."""
-    owner = request.user.church_owner
-    church = owner.church
-
-    if not church or not church.is_student_church:
-        return redirect("attendance:owner_dashboard")
-
-    cohort = get_object_or_404(GraduationYear, id=year_id, church=church)
-    errors = []
-
-    if request.method == "POST":
-        year_str = request.POST.get("year", "").strip()
-        completion_date_str = request.POST.get("completion_date", "").strip()
-        is_graduated = request.POST.get("is_graduated") == "on"
-
-        if not year_str or not completion_date_str:
-            errors.append("Both year/class name and completion date are required.")
-        else:
-            try:
-                # Check for duplicate year label in this church case-insensitively, excluding current cohort
-                if church.graduation_years.filter(year__iexact=year_str).exclude(id=year_id).exists():
-                    errors.append(f"Graduation cohort '{year_str}' is already registered.")
-                else:
-                    old_label = cohort.year
-                    cohort.year = year_str
-                    cohort.completion_date = completion_date_str
-                    cohort.is_graduated = is_graduated
-                    cohort.save()
-                    logger.info(f"Cohort updated: '{old_label}' → '{year_str}' (completion: {completion_date_str}, graduated: {is_graduated}) by owner '{request.user.username}'.")
-                    return redirect("attendance:owner_graduation_years")
-            except Exception as e:
-                logger.exception(f"Failed to update cohort (ID:{year_id}): {e}")
-                errors.append(f"Error updating graduation cohort: {e}")
-
-    form_data = {
-        "year": cohort.year,
-        "completion_date": cohort.completion_date.strftime("%Y-%m-%d") if cohort.completion_date else "",
-        "is_graduated": cohort.is_graduated
-    }
-
-    return render(request, "owner/edit_graduation_year.html", {
-        "owner": owner,
-        "cohort": cohort,
-        "errors": errors,
-        "form_data": form_data
-    })
+    return redirect("attendance:owner_academic_levels")
 
 
 # ---------------------------------------------------------------------------
@@ -1112,6 +1074,84 @@ def owner_export_event_csv(request, event_uuid):
 
     return response
 
+
+
+
+# ---------------------------------------------------------------------------
+# Promotion & Alumni Logic
+# ---------------------------------------------------------------------------
+
+@owner_required
+@require_POST
+def owner_promote_students(request):
+    owner = request.user.church_owner
+    church = owner.church
+
+    # Get levels ordered from highest sequence to lowest
+    levels = list(AcademicLevel.objects.filter(church=church).order_by("-sequence_order"))
+
+    if not levels:
+        return redirect("attendance:owner_academic_levels")
+
+    # The highest level students go to Alumni
+    highest_level = levels[0]
+    graduating_members = Member.objects.filter(church=church, academic_level=highest_level)
+    
+    for member in graduating_members:
+        # Create alumni record
+        Alumni.objects.create(
+            church=church,
+            name=member.name,
+            phone_number=member.phone_number,
+            emergency_phone_number=member.emergency_phone_number,
+            address=member.address,
+            department=member.department,
+            member_since=member.created_at
+        )
+    
+    # Delete the members from the active table after transfer
+    count = graduating_members.count()
+    graduating_members.delete()
+    logger.info(f"Promoted {count} students from {highest_level.name} to Alumni.")
+
+    # Promote the rest
+    for i in range(1, len(levels)):
+        current_level = levels[i]
+        next_level = levels[i-1]
+        members_to_promote = Member.objects.filter(church=church, academic_level=current_level)
+        promote_count = members_to_promote.count()
+        members_to_promote.update(academic_level=next_level)
+        logger.info(f"Promoted {promote_count} students from {current_level.name} to {next_level.name}.")
+
+    return redirect("attendance:owner_academic_levels")
+
+
+@owner_required
+def owner_alumni_list(request):
+    owner = request.user.church_owner
+    church = owner.church
+
+    search = request.GET.get("search", "").strip()
+    
+    alumni_qs = Alumni.objects.filter(church=church).select_related('church', 'department')
+    
+    if search:
+        alumni_qs = alumni_qs.filter(
+            Q(name__icontains=search) | Q(phone_number__icontains=search)
+        )
+        
+    alumni_qs = alumni_qs.order_by("-graduated_on")
+    
+    paginator = Paginator(alumni_qs, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    return render(request, "owner/alumni_list.html", {
+        "owner": owner,
+        "alumni": page_obj,
+        "page_obj": page_obj,
+        "is_paginated": page_obj.has_other_pages(),
+        "search": search,
+    })
 
 # ---------------------------------------------------------------------------
 # 429 Rate Limit Error Handler

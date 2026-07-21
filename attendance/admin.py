@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Member, Event, AttendanceLog, ChurchOwner, Church, GraduationYear
+from .models import Member, Event, AttendanceLog, ChurchOwner, Church, AcademicLevel, Alumni, Department
 
 
 @admin.register(Church)
@@ -10,21 +10,28 @@ class ChurchAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
 
 
-@admin.register(GraduationYear)
-class GraduationYearAdmin(admin.ModelAdmin):
-    list_display = ("year", "completion_date", "church")
+@admin.register(AcademicLevel)
+class AcademicLevelAdmin(admin.ModelAdmin):
+    list_display = ("name", "sequence_order", "church")
     list_filter = ("church",)
-    search_fields = ("year",)
-    ordering = ("year",)
+    search_fields = ("name",)
+    ordering = ("sequence_order",)
 
 
 @admin.register(Member)
 class MemberAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone_number", "church", "graduation_year", "department", "created_at")
+    list_display = ("name", "phone_number", "church", "academic_level", "department", "created_at")
     search_fields = ("name", "phone_number")
-    list_filter = ("church", "graduation_year", "department")
+    list_filter = ("church", "academic_level", "department")
     ordering = ("name",)
     readonly_fields = ("created_at", "updated_at")
+
+@admin.register(Alumni)
+class AlumniAdmin(admin.ModelAdmin):
+    list_display = ("name", "phone_number", "church", "department", "graduated_on")
+    search_fields = ("name", "phone_number")
+    list_filter = ("church", "department")
+    ordering = ("-graduated_on",)
 
 
 @admin.register(Event)

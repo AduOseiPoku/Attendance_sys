@@ -12,16 +12,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0f1117;
-      --surface:   #1a1d27;
-      --surface2:  #22263a;
-      --border:    rgba(255,255,255,0.07);
-      --accent:    #6c63ff;
-      --accent2:   #48cfc6;
-      --text:      #e8eaf6;
-      --muted:     #7b82a6;
-      --green:     #34d399;
-      --red:       #f87171;
+      --bg:        #0f172a; /* Slate 900 */
+      --surface:   #1e293b; /* Slate 800 */
+      --surface2:  #334155; /* Slate 700 */
+      --border:    rgba(255,255,255,0.1);
+      --accent:    #6366f1; /* Indigo 500 */
+      --accent2:   #8b5cf6; /* Violet 500 */
+      --text:      #f8fafc; /* Slate 50 */
+      --muted:     #94a3b8; /* Slate 400 */
+      --green:     #10b981; /* Emerald 500 */
+      --red:       #ef4444; /* Red 500 */
       --sidebar-w: 240px;
       --radius:    14px;
     }
@@ -260,9 +260,13 @@
         <span class="nav-icon">🏢</span> Departments
       </a>
       {% if owner.church.is_student_church %}
-      <a href="{% url 'attendance:owner_graduation_years' %}"
-         class="nav-link {% if request.resolver_match.url_name == 'owner_graduation_years' %}active{% endif %}">
-        <span class="nav-icon">🎓</span> Graduation Years
+      <a href="{% url 'attendance:owner_academic_levels' %}"
+         class="nav-link {% if request.resolver_match.url_name == 'owner_academic_levels' %}active{% endif %}">
+        <span class="nav-icon">🎓</span> Academic Levels
+      </a>
+      <a href="{% url 'attendance:owner_alumni_list' %}"
+         class="nav-link {% if request.resolver_match.url_name == 'owner_alumni_list' %}active{% endif %}">
+        <span class="nav-icon">📜</span> Alumni
       </a>
       {% endif %}
 

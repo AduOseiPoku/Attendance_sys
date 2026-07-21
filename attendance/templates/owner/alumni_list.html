@@ -1,0 +1,72 @@
+{% extends "owner/base.html" %}
+{% block title %}Alumni — {{ owner.church_name }}{% endblock %}
+{% block page_title %}Graduated Students (Alumni){% endblock %}
+
+{% block extra_styles %}
+<style>
+  .controls { display: flex; gap: 16px; margin-bottom: 24px; }
+  .search-input { flex: 1; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13.5px; }
+  .btn-search { padding: 0 20px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; padding: 14px 18px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.01); }
+  td { padding: 14px 18px; font-size: 13.5px; color: var(--text); border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .badge-dept { background: rgba(255,255,255,0.06); color: var(--muted); padding: 3px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+  .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 24px; }
+  .page-link { padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text); text-decoration: none; }
+  .page-link.active { background: var(--accent); border-color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="GET" class="controls">
+  <input type="text" name="search" class="search-input" placeholder="Search by name or phone..." value="{{ search }}">
+  <button type="submit" class="btn-search">Search</button>
+</form>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Former Department</th>
+        <th>Graduated On</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for alum in alumni %}
+      <tr>
+        <td style="font-weight: 500;">{{ alum.name }}</td>
+        <td style="color: var(--muted);">{{ alum.phone_number }}</td>
+        <td>
+          {% if alum.department %}
+          <span class="badge-dept">{{ alum.department.name }}</span>
+          {% else %}
+          <span style="color:var(--muted); font-size:12px;">--</span>
+          {% endif %}
+        </td>
+        <td style="color: var(--muted);">{{ alum.graduated_on|date:"M d, Y" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" style="text-align:center; padding: 48px; color: var(--muted);">No alumni found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% for num in page_obj.paginator.page_range %}
+    {% if page_obj.number == num %}
+      <span class="page-link active">{{ num }}</span>
+    {% else %}
+      <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}" class="page-link">{{ num }}</a>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
