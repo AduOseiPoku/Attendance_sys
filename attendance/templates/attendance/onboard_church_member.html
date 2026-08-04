@@ -52,11 +52,11 @@
 
   {% if church.is_student_church %}
   <div class="form-group">
-    <label for="academic_level">Graduation Year <span style="color:var(--red);">*</span></label>
+    <label for="academic_level">Academic Level <span style="color:var(--red);">*</span></label>
     <select id="academic_level" name="academic_level" class="form-input" style="appearance: none; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%237b82a6\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer;" required>
-      <option value="">-- Select Year --</option>
+      <option value="">-- Select Level --</option>
       {% for cohort in academic_levels %}
-        <option value="{{ cohort.id }}">{{ cohort.year }}</option>
+        <option value="{{ cohort.id }}">{{ cohort.name }}</option>
       {% endfor %}
     </select>
   </div>
