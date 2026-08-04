@@ -133,7 +133,7 @@ def onboard_member(request, event_uuid):
 
     academic_levels = []
     if church and church.is_student_church:
-        academic_levels = church.academic_levels.filter(is_graduated=False)
+        academic_levels = church.academic_levels.all()
 
     departments = []
     if church:
@@ -225,7 +225,7 @@ def onboard_church_member(request, church_uuid):
 
     academic_levels = []
     if church.is_student_church:
-        academic_levels = church.academic_levels.filter(is_graduated=False)
+        academic_levels = church.academic_levels.all()
 
     departments = church.departments.all()
 
