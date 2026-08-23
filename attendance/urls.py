@@ -24,6 +24,7 @@ urlpatterns = [
     path('owner/logout/',                                   views.owner_logout,              name='owner_logout'),
     path('owner/',                                          views.owner_dashboard,           name='owner_dashboard'),
     path('owner/members/',                                  views.owner_members,             name='owner_members'),
+    path('owner/members/export/',                           views.owner_export_members_csv,  name='owner_export_members_csv'),
     path('owner/member/<uuid:member_uuid>/edit/',           views.owner_edit_member,         name='owner_edit_member'),
     path('owner/member/<uuid:member_uuid>/deactivate/',     views.owner_deactivate_member,   name='owner_deactivate_member'),
     path('owner/academic-levels/',                         views.owner_academic_levels,     name='owner_academic_levels'),

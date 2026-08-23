@@ -532,6 +532,51 @@ def owner_members(request):
 
 
 @owner_required
+def owner_export_members_csv(request):
+    """Exports all active members for the church as a downloadable CSV file."""
+    owner = request.user.church_owner
+    church = owner.church
+    
+    # Get all active members for this church
+    members = Member.objects.filter(church=church, is_active=True).annotate(
+        total_attendances=Count("attendance_logs")
+    ).order_by("name")
+
+    response = HttpResponse(content_type="text/csv")
+    filename = f"{church.name.replace(' ', '_')}_members_export.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    # Write the header row
+    header = ["Name", "Email", "Phone Number", "Emergency Contact", "Address", "Department"]
+    if church.is_student_church:
+        header.append("Academic Level")
+    header.extend(["Total Check-ins", "Registered On"])
+    writer.writerow(header)
+
+    # Write data rows
+    for member in members:
+        row = [
+            member.name,
+            member.email or "",
+            f'="{member.phone_number}"' if member.phone_number else "",
+            f'="{member.emergency_phone_number}"' if member.emergency_phone_number else "",
+            member.address,
+            member.department.name if member.department else "-",
+        ]
+        if church.is_student_church:
+            row.append(member.academic_level.name if member.academic_level else "-")
+            
+        row.extend([
+            member.total_attendances,
+            member.created_at.strftime("%Y-%m-%d"),
+        ])
+        writer.writerow(row)
+
+    return response
+
+
+@owner_required
 def owner_event_detail(request, event_uuid):
     """Per-event Present / Absent roster with attendance percentage."""
     owner = request.user.church_owner

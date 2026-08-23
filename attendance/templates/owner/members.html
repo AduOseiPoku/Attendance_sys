@@ -230,6 +230,10 @@
 
     <button type="submit" class="filter-submit">Filter</button>
 
+    <a href="{% url 'attendance:owner_export_members_csv' %}" class="clear-btn" style="border-color: var(--accent); color: var(--accent);">
+        ⬇️ Export to CSV
+    </a>
+
     {% if search or department_id %}
     <a href="{% url 'attendance:owner_members' %}" class="clear-btn">✕ Clear</a>
     {% endif %}
