@@ -61,6 +61,10 @@ def scan_landing(request, event_uuid):
         if member:
             # Case A: Names match perfectly
             if member.name.lower() == name.lower():
+                # Profile Completion Prompt
+                if not member.email:
+                    return redirect("attendance:update_email", event_uuid=event.uuid, member_uuid=member.uuid)
+
                 log, created = AttendanceLog.objects.get_or_create(
                     member=member, 
                     event=event,
@@ -141,6 +145,7 @@ def onboard_member(request, event_uuid):
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
         phone_number = normalize_phone(request.POST.get("phone_number", ""))
         emergency_phone_number = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address = request.POST.get("address", "").strip()
@@ -168,6 +173,7 @@ def onboard_member(request, event_uuid):
                 phone_number=phone_number,
                 defaults={
                     "name": name,
+                    "email": email or None,
                     "emergency_phone_number": emergency_phone_number,
                     "address": address,
                     "department": department,
@@ -231,6 +237,7 @@ def onboard_church_member(request, church_uuid):
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
         phone_number = normalize_phone(request.POST.get("phone_number", ""))
         emergency_phone_number = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address = request.POST.get("address", "").strip()
@@ -258,6 +265,7 @@ def onboard_church_member(request, church_uuid):
                 phone_number=phone_number,
                 defaults={
                     "name": name,
+                    "email": email or None,
                     "emergency_phone_number": emergency_phone_number,
                     "address": address,
                     "department": department,
@@ -305,6 +313,9 @@ def confirm_identity(request, event_uuid, member_uuid):
     event = get_object_or_404(Event, uuid=event_uuid)
     member = get_object_or_404(Member, uuid=member_uuid)
 
+    if not member.email:
+        return redirect("attendance:update_email", event_uuid=event.uuid, member_uuid=member.uuid)
+
     log, created = AttendanceLog.objects.get_or_create(
         member=member, 
         event=event,
@@ -315,6 +326,38 @@ def confirm_identity(request, event_uuid, member_uuid):
 
     return render(request, "attendance/success.html", {
         "message": f"Welcome back, {member.name}! {status_msg}",
+        "event": event,
+    })
+
+
+@ratelimit(key='ip', rate='10/m', method='POST', block=True)
+def update_email(request, event_uuid, member_uuid):
+    """Prompts an existing member for their email during check-in."""
+    event = get_object_or_404(Event, uuid=event_uuid)
+    member = get_object_or_404(Member, uuid=member_uuid)
+
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
+        if email:
+            member.email = email
+            member.save(update_fields=["email"])
+            logger.info(f"Email updated for member '{member.name}' (ID:{member.id}).")
+        
+        # Log attendance after processing the form
+        log, created = AttendanceLog.objects.get_or_create(
+            member=member, 
+            event=event,
+            defaults={"church": event.church}
+        )
+        status_msg = "Attendance recorded." if created else "You have already checked in for this event."
+        
+        return render(request, "attendance/success.html", {
+            "message": f"Welcome back, {member.name}! {status_msg}",
+            "event": event,
+        })
+
+    return render(request, "attendance/update_email.html", {
+        "member": member,
         "event": event,
     })
 
@@ -790,6 +833,7 @@ def owner_edit_member(request, member_uuid):
 
     if request.method == "POST":
         name                  = request.POST.get("name", "").strip()
+        email                 = request.POST.get("email", "").strip()
         phone_number          = normalize_phone(request.POST.get("phone_number", ""))
         emergency_phone       = normalize_phone(request.POST.get("emergency_phone_number", ""))
         address               = request.POST.get("address", "").strip()
@@ -822,7 +866,7 @@ def owner_edit_member(request, member_uuid):
                 "academic_levels": academic_levels,
                 "departments": departments,
                 "form_data": {
-                    "name": name, "phone_number": phone_number,
+                    "name": name, "email": email, "phone_number": phone_number,
                     "emergency_phone_number": emergency_phone,
                     "address": address, "department_id": department_id,
                     "academic_level_id": academic_level_id,
@@ -831,6 +875,7 @@ def owner_edit_member(request, member_uuid):
 
         try:
             member.name                  = name
+            member.email                 = email or None
             member.phone_number          = phone_number
             member.emergency_phone_number = emergency_phone
             member.address               = address
@@ -850,6 +895,7 @@ def owner_edit_member(request, member_uuid):
 
     form_data = {
         "name":                   member.name,
+        "email":                  member.email or "",
         "phone_number":           member.phone_number,
         "emergency_phone_number": member.emergency_phone_number,
         "address":                member.address,

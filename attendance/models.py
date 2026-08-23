@@ -116,6 +116,11 @@ class Member(models.Model):
         db_index=True
     )
 
+    email = models.EmailField(
+        blank=True,
+        null=True
+    )
+
     # Phone number is unique per church, handled via Meta constraints
     phone_number = models.CharField(
         max_length=20,
@@ -189,6 +194,7 @@ class Alumni(models.Model):
         related_name="alumni"
     )
     name = models.CharField(max_length=100, db_index=True)
+    email = models.EmailField(blank=True, null=True)
     phone_number = models.CharField(max_length=20, db_index=True)
     emergency_phone_number = models.CharField(max_length=20, blank=True, default='')
     address = models.TextField(blank=True, default='')

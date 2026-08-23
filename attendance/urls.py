@@ -17,6 +17,7 @@ urlpatterns = [
     # Unified resolution endpoint handling both name and phone suggestion forms securely
     path('confirm/<uuid:event_uuid>/<uuid:member_uuid>/', views.confirm_identity, name='confirm_identity'),
     path('quick-checkin/<uuid:event_uuid>/', views.quick_checkin, name='quick_checkin'),
+    path('update-email/<uuid:event_uuid>/<uuid:member_uuid>/', views.update_email, name='update_email'),
 
     # --- Church Owner Dashboard ---
     path('owner/login/',                                    views.owner_login,               name='owner_login'),

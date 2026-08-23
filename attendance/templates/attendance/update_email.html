@@ -1,0 +1,110 @@
+{% extends 'attendance/member_base.html' %}
+
+{% block title %}Update Profile - {{ event.name }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .welcome-header {
+        text-align: center;
+        margin-bottom: 24px;
+        animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .welcome-header .emoji {
+        font-size: 48px;
+        margin-bottom: 12px;
+        display: inline-block;
+        animation: wave 2s infinite;
+        transform-origin: 70% 70%;
+    }
+
+    @keyframes wave {
+        0% {
+            transform: rotate(0.0deg)
+        }
+
+        10% {
+            transform: rotate(14.0deg)
+        }
+
+        20% {
+            transform: rotate(-8.0deg)
+        }
+
+        30% {
+            transform: rotate(14.0deg)
+        }
+
+        40% {
+            transform: rotate(-4.0deg)
+        }
+
+        50% {
+            transform: rotate(10.0deg)
+        }
+
+        60% {
+            transform: rotate(0.0deg)
+        }
+
+        100% {
+            transform: rotate(0.0deg)
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-container {
+        animation: fadeIn 0.7s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome-header">
+    <span class="emoji">👋</span>
+    <h2>Hi {{ member.name.split.0 }}!</h2>
+    <p class="subtitle">Please complete your profile to finish checking in. Thank You</p>
+</div>
+
+<form method="POST" class="form-container">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="email">Email Address <span style="font-weight: 400; text-transform: none;">(Optional)</span></label>
+        <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com"
+            style="padding-left: 40px; background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z\'%3E%3C/path%3E%3Cpolyline points=\'22,6 12,13 2,6\'%3E%3C/polyline%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: 12px center;">
+        <p class="hint" style="margin-top: 8px;">We'll use this to keep you updated on upcoming events.</p>
+    </div>
+
+    <div class="action-stack" style="margin-top: 32px;">
+        <button type="submit" class="btn btn-primary">
+            Save & Continue
+        </button>
+        <button type="submit" formnovalidate class="btn btn-ghost"
+            style="border: none; background: transparent; box-shadow: none;">
+            Skip for now
+        </button>
+    </div>
+</form>
+{% endblock %}
